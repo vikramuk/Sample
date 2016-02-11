@@ -1,0 +1,136 @@
+#!/usr/bin/python
+'''    
+def List_Resources():
+    rm= visa.ResourceManager()
+    rm.list_resources()
+    try:
+        rm.list_resources("*IDN?")
+    except IOError as e:
+        print "I/O error({0}): {1}".format(e.errno, e.strerror)
+    except ValueError:
+        print "Could not convert data to an integer."
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
+    raise
+'''
+import sys
+import time
+import usb.core
+import visa
+#from HTMLReport import HTMLTestRunner
+
+AGILENT_33220A= "USB0::0x0957::0x0407::MY44021621::0::INSTR"
+AGILENT_33522A ="USB0::0x0957::0x2307::MY50003961::0::INSTR"
+
+def test_List_Vendor():        
+    dev = usb.core.find(find_all=True)
+    # loop through devices, printing vendor and product ids in decimal and hex
+    for cfg in dev:
+        sys.stdout.write('Decimal VendorID=' + str(cfg.idVendor) +' & ProductID=' + str(cfg.idProduct) + '\n')
+        sys.stdout.write('Hexadecimal: VendorID=' + hex(cfg.idVendor) + ' & ProductID=' + hex(cfg.idProduct) + '\n\n')
+
+def test_Values_USB():
+    # Check for Device Availability
+    try:
+        rm = visa.ResourceManager()
+        rm.list_resources()
+        inst_33522A = rm.open_resource(AGILENT_33522A, read_termination="\r")
+        inst_33522A.timeout = 25        
+        print ("Checking Device Number: ")
+        print(inst_33522A.query("*IDN?", delay=1))        
+        print ("Checking Frequency Value")
+        print(inst_33522A.query(":SOUR:FREQ?"))    
+        print ("Checking Phase Value")    
+        print(inst_33522A.query(":SOUR:BURS:PHAS?", delay=1))        
+        print ("Checking Burst Value")    
+        print(inst_33522A.write(":SOUR:BURS:NCYC?"))
+        print(inst_33522A.read_raw())        
+        print("Getting Values for Frequency")
+        # print(inst_33522A.write_ascii_values(":SOUR1:FREQ:CW 1.1512 MHZ",termination=None, encoding=None))
+        time.sleep(1)
+        freqy = float((inst_33522A.query(":SOUR1:FREQ?")))      
+        print "Frequency is Set to:    ", freqy
+        sample_amp = float(inst_33522A.query(':SOUR:VOLT:LEV:IMM:AMPL?'))
+        print "Sample Rate:    ", sample_amp
+        bursttime = float(inst_33522A.query(":SOUR:BURS:NCYC?"))
+        print "Burst Cycle:    ", bursttime
+    #Fail Gracefully
+    except IOError:
+        print 'cannot Connect to Device: '+ AGILENT_33522A
+    except Exception as e:
+        print 'cannot Find the Device: '+ AGILENT_33522A
+    else:
+        print "Connection has been Closed"
+
+def set_Values_USB():
+    # Check for Device Availability
+    try:
+        rm = visa.ResourceManager()
+        rm.list_resources()
+        inst_33522A = rm.open_resource(AGILENT_33522A, read_termination="\r")
+        inst_33522A.timeout = 25        
+        print ("Checking Device Number")
+        print(inst_33522A.query("*IDN?", delay=1))        
+        print("Setting Frequency")
+        print(inst_33522A.write(":SOUR1:FREQ:CW 1.1512 MHZ"))        
+        print("Setting Amplitude")
+        print(inst_33522A.write(":SOUR1:VOLT:LEV:IMM:AMPL 0.1"))        
+    #Fail Gracefully
+    except IOError:
+        print 'cannot Connect to Device: '+ AGILENT_33522A
+    except Exception as e:
+        print 'cannot Find to Device: '+ AGILENT_33522A
+    else:
+        print "Connection has been Closed"       
+
+if __name__ == "__main__":    
+    #Check Device
+    test_List_Vendor()
+    #Get Initial Values
+    test_Values_USB() 
+    #Set Values
+    set_Values_USB()
+    #Re-read the set values 
+    test_Values_USB()
+    
+''' 
+#USB0::0x0957::0x2307::MY50003961::0::INSTR      - for 33522A
+#USB0::0x0957::0x0407::MY44021621::0::INSTR      - for 33220A
+'''    
+Step	Instrument	Code	Results
+"2"	"33522A-MIC Lab"	"*CLS"	""
+"3"	""	"# Reset the Device"	""
+"4"	"33522A-MIC Lab"	"*RST"	""
+"5"	""	"# Disable all the Outputs"	""
+"6"	""	"(Wait 1000ms)"	""
+"7"	"33522A-MIC Lab"	":OUTPut1:STATe 0"	""
+"8"	"33522A-MIC Lab"	":OUTPut2:STATe 0"	""
+"9"	""	"# Set a Continous Wave with Burst Mode set for 0.1 Seconds"	""
+"10"	"33522A-MIC Lab"	":SOURce:FREQuency:CW?"	""
+"11"	""	"# Set CW Wave for 1.152MHz with Zero Phase and Zero Offset at 0.1mvpp Amplitude"	""
+"12"	"33522A-MIC Lab"	":SOURce1:FREQuency:CW 1.1512 MHZ"	""
+"13"	"33522A-MIC Lab"	":SOURce:LIST:FREQuency?"	""
+"14"	"33522A-MIC Lab"	":SOURce1:FREQuency:CW 1.1512 MHZ"	""
+"15"	"33522A-MIC Lab"	":SOURce:VOLTage:LEVel:UNIT?"	""
+"16"	"33522A-MIC Lab"	":SOURce1:VOLTage:LEVel:IMMediate:AMPLitude 0.1"	""
+"17"	"33522A-MIC Lab"	":SOURce:VOLTage:LEVel:IMMediate:AMPLitude?"	""
+"18"	"33522A-MIC Lab"	":SOURce1:BURSt:STATe 1"	""
+"19"	"33522A-MIC Lab"	":SOURce1:BURSt:PHASe 0 DEG"	""
+"20"	"33522A-MIC Lab"	":SOURce:BURSt:PHASe?"	""
+"21"	""	"(Wait 200ms)"	""
+"22"	""	"# Set the Burst Gating for 0.1 Seconds"	""
+"23"	"33522A-MIC Lab"	":SOURce1:BURSt:NCYCles 1"	""
+"24"	"33522A-MIC Lab"	":SOURce:BURSt:NCYCles?"	""
+"25"	""	"# Set Load Impedence for 50 Ohms"	""
+"26"	"33522A-MIC Lab"	":OUTPut1:LOAD 50"	""
+"27"	"33522A-MIC Lab"	":OUTPut1:LOAD?"	""
+"28"	"33522A-MIC Lab"	":OUTPut1:LOAD?"	""
+"29"	"33522A-MIC Lab"	":SOURce:BURSt:INTernal:PERiod?"	""
+"30"	"33522A-MIC Lab"	":SOURce1:BURSt:INTernal:PERiod 0.1 S"	""
+"31"	"33522A-MIC Lab"	":SOURce:BURSt:INTernal:PERiod?"	""
+"32"	"33522A-MIC Lab"	":OUTPut2:STATe 0"	""
+"33"	""	"# Enable Output Channel 1 and Disable Channel 2"	""
+"34"	""	"(Wait 100ms)"	""
+"35"	"33522A-MIC Lab"	":OUTPut1:STATe 1"	""
+"36"	"33522A-MIC Lab"	":OUTPut1:STATe 0"	""
+"37"	"33522A-MIC Lab"	":OUTPut1:STATe 1"	""
