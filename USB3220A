@@ -1,0 +1,190 @@
+#!/usr/bin/python
+'''    
+def List_Resources():
+    rm= visa.ResourceManager()
+    rm.list_resources()
+    try:
+        rm.list_resources("*IDN?")
+    except IOError as e:
+        print "I/O error({0}): {1}".format(e.errno, e.strerror)
+    except ValueError:
+        print "Could not convert data to an integer."
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
+    raise
+'''
+import sys
+import time
+import usb.core
+import visa
+
+AGILENT_33220A= "USB0::0x0957::0x0407::MY44021621::0::INSTR"
+AGILENT_33522A ="USB0::0x0957::0x2307::MY50003961::0::INSTR"
+
+def test_List_Vendor():        
+    dev = usb.core.find(find_all=True)
+    # loop through devices, printing vendor and product ids in decimal and hex
+    for cfg in dev:
+        sys.stdout.write('Decimal VendorID=' + str(cfg.idVendor) +' & ProductID=' + str(cfg.idProduct) + '\n')
+        sys.stdout.write('Hexadecimal: VendorID=' + hex(cfg.idVendor) + ' & ProductID=' + hex(cfg.idProduct) + '\n\n')
+
+def disconnectOutput():
+    # Check for Device Availability
+    try:
+        rm = visa.ResourceManager()
+        rm.list_resources()
+        inst_33220A = rm.open_resource(AGILENT_33220A, read_termination="\r")
+        inst_33220A.timeout = 125
+        print ("Disconnecting the Output")
+        print (inst_33220A.write(":OUTP:STAT 0"))      
+    #Fail Gracefully
+    except IOError:
+        print 'cannot Connect to Device: '+ AGILENT_33220A
+    except Exception as e:
+        print 'cannot Find to Device: '+ AGILENT_33220A
+    else:
+        print "Connection has been Closed"
+            
+def connectOutput():
+    # Check for Device Availability
+    try:
+        rm = visa.ResourceManager()
+        rm.list_resources()
+        inst_33220A = rm.open_resource(AGILENT_33220A, read_termination="\r")
+        inst_33220A.timeout = 125
+        print ("Conecting the Output Block")
+        print(inst_33220A.write(":OUTP:STAT 1"))      
+    #Fail Gracefully
+    except IOError:
+        print 'cannot Connect to Device: '+ AGILENT_33220A
+    except Exception as e:
+        print 'cannot Find to Device: '+ AGILENT_33220A
+    else:
+        print "Connection has been Closed"   
+
+def test_Values_USB():
+    # Check for Device Availability
+    try:
+        rm = visa.ResourceManager()
+        rm.list_resources()
+        inst_33220A = rm.open_resource(AGILENT_33220A, read_termination="\r")
+        inst_33220A.timeout = 125  
+        '''      
+        print ("Checking Device Number: ")
+        print(inst_33220A.query("*IDN?", delay=1))
+        print(inst_33220A.query("SYST:REMO", delay=1))
+        '''
+        print ("Checking Frequency Value")
+        print(inst_33220A.query(":SOUR:FREQ?"))    
+        print ("Checking Phase Value")    
+        print(inst_33220A.query(":SOUR:BURS:PHAS?", delay=5))        
+        print ("Checking Burst Value")    
+        print(inst_33220A.write(":SOUR:BURS:NCYC?"))
+        freqy = float((inst_33220A.query(":SOUR1:FREQ?")))      
+        print "Frequency is Set to:    ", freqy
+        sample_amp = float(inst_33220A.query(':SOUR:VOLT:LEV:IMM:AMPL?'))
+        print "Ultrasound Amplitude:    ", sample_amp , "Volts"
+        burstperiod = float(inst_33220A.query(":SOUR:BURS:INT:PER?"))
+        print "Burst Period:    ", burstperiod
+        burstCycles = float(inst_33220A.query(":SOUR:BURS:NCYC?"))
+        print "Burst Cycles:    ", burstCycles
+        '''
+        print(inst_33220A.read_raw())        
+        print("Getting Values for Frequency")
+        # print(inst_33220A.write_ascii_values(":SOUR1:FREQ:CW 1.1512 MHZ",termination=None, encoding=None))
+        time.sleep(1)
+        '''
+    #Fail Gracefully
+    except IOError:
+        print 'cannot Connect to Device: '+ AGILENT_33220A
+    except Exception as e:
+        print 'cannot Find the Device: '+ AGILENT_33220A
+    else:
+        print "Connection has been Closed"
+
+def set_Values_USB(period):
+    # Check for Device Availability
+    try:
+        rm = visa.ResourceManager()
+        rm.list_resources()
+        inst_33220A = rm.open_resource(AGILENT_33220A, read_termination="\r")
+        inst_33220A.timeout = 25        
+        #print ("Checking Device Number")
+        #print(inst_33220A.query("*IDN?", delay=1))
+        print ("Resetting the Device")
+        print(inst_33220A.write("*RST"))     
+        print ("Disable the Output")
+        print(inst_33220A.write(":OUTP:STAT 0")) 
+        print("Setting Frequency")
+        time.sleep(0.05)
+        print(inst_33220A.write(":SOUR:FREQ:CW 1.1512 MHZ"))        
+        print("Setting Amplitude")
+        time.sleep(0.05)
+        print(inst_33220A.write(":SOUR:VOLT:LEV:IMM:AMPL 0.1 VPP"))        #:SOUR:VOLT:LEV:IMM:AMPL 0.1
+        print ("Setting Cycle Phase")
+        time.sleep(0.05)
+        print (inst_33220A.write(":SOUR:BURS:PHAS 0 "))
+        print ("Enable Burst State")
+        time.sleep(0.05)
+        print(inst_33220A.write(":SOUR:BURS:STAT 1"))  
+        print ("Setting Burst Cycles")
+        time.sleep(0.05)        
+        print (inst_33220A.write(":SOUR:BURS:NCYC 50000"))
+        print ("Setting Period to %.2f S" %float(period))
+        time.sleep(0.05)
+        print (inst_33220A.write(":SOUR:BURS:INT:PER %f S" %float(period)))        
+        print ("Enable the Output")
+        time.sleep(0.05)
+        print(inst_33220A.write(":OUTP:STAT 1"))       
+    #Fail Gracefully
+    except IOError:
+        print 'cannot Connect to Device: '+ AGILENT_33220A
+    except Exception as e:
+        print e
+    else:
+        print "Connection has been Closed"       
+
+if __name__ == "__main__":
+    #disconnect Channels
+    disconnectOutput()
+    time.sleep(1)
+    #Check Device
+    #test_List_Vendor()
+    #Get Initial Values
+    #test_Values_USB()
+    time.sleep(1) 
+    #Set Values
+    set_Values_USB(0.8)
+    #Re-read the set values 
+    #test_Values_USB()
+    time.sleep(2)
+    #set_Values_USB(0.1)
+    #connect Channels
+    connectOutput()
+''' 
+#USB0::0x0957::0x2307::MY50003961::0::INSTR      - for 33522A
+#USB0::0x0957::0x0407::MY44021621::0::INSTR      - for 33220A
+'''    
+
+
+Step	Instrument	Code	Results
+"2"	"33220A"	"*RST"	""
+"3"	"33220A"	":OUTPut:STATe 0"	""
+"4"	""	"(Wait 1000ms)"	""
+"5"	"33220A"	":SOURce:FREQuency:CW 1.1512 MHZ"	""
+"6"	""	"(Wait 1000ms)"	""
+"7"	"33220A"	":SOURce:FREQuency:CW?"	""
+"8"	""	"(Wait 1000ms)"	""
+"9"	"33220A"	":SOURce:BURSt:PHASe 0"	""
+"10"	"33220A"	":SOURce:BURSt:PHASe?"	""
+"11"	""	"(Wait 1000ms)"	""
+"12"	"33220A"	":SOURce:BURSt:NCYCles 50000"	""
+"13"	"33220A"	":SOURce:BURSt:NCYCles?"	""
+"14"	"33220A"	":SOURce:BURSt:INTernal:PERiod 0.2 S"	""
+"15"	"33220A"	":SOURce:BURSt:STATe 1"	""
+"16"	"33220A"	":SOURce:VOLTage:LEVel:IMMediate:AMPLitude 0.1 VPP"	""
+"17"	""	"(Wait 1000ms)"	""
+"18"	"33220A"	":SOURce:PULSe:PERiod?"	""
+"19"	"33220A"	":OUTPut:STATe 1"	""
+"20"	"33220A"	":APPLy:DC DEFault,1 V,0.1 V"	""
+"21"	"33220A"	":APPLy:DC DEFault,1 V,0.1 V"	""
