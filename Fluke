@@ -1,0 +1,930 @@
+from utils.serial import SerialCommandInterface
+import time
+import re
+from utils.logit.logger import Logger
+from sims.pdsimulator.pdsim import PDSim
+from robot.libraries.BuiltIn import BuiltIn
+
+logger = Logger("ProSim8")
+
+
+class FlukeProSim8(PDSim):
+
+    ROBOT_LIBRARY_VERSION = "1.0.1"
+    ROBOT_LIBRARY_SCOPE = "GLOBAL"
+
+    def __init__(self, com_port, sci=SerialCommandInterface):
+        self.com_port = com_port
+        self.sci_class = sci
+        self.sim_error = False
+        # Default pressure values for BP dynamic waves
+        self._systolic = {'ART': '120', 'RART': '120', 'LV': '120',
+                          'LA': '014', 'RV': '025', 'PA': '025',
+                          'PAW': '010', 'RA': '015'}
+        self._diastolic = {'ART': '080', 'RART': '080', 'LV': '000',
+                           'LA': '004', 'RV': '000', 'PA': '010',
+                           'PAW': '002', 'RA': '010'}
+
+    # General Commands
+    def reset_simulator(self):
+        """ Reset the simulator """
+        self._get_sci().send_command('RESET')
+        time.sleep(7)
+        returnMessage = self._get_sci().send_command('REMOTE')
+        if not returnMessage == "RMAIN":
+            raise Exception(returnMessage)
+
+    def send_command_to_simulator(self, command):
+        self._send_command(command)
+
+    def _detect_simulator(self):
+        ''' Detects the simulator '''
+        self._get_sci()
+        return
+
+    def set_initial_state(self):
+        """ This command will set the simulator to initial state.
+        """
+        try:
+            sw_pck = BuiltIn().get_variable_value("${sw_pck}", "non-nicu")
+        except:
+            sw_pck = "non-nicu"
+
+        if sw_pck == "non-nicu":
+            self.run_normal_sinus_ECG('80')
+        else:
+            self.run_normal_sinus_ECG('120')
+        self.set_ECG_amplitude('1.00')
+        self.set_ST_elevation('0')
+        self.set_ECG_artifact('OFF')
+        self.run_respiration_apnea('FALSE')
+        if sw_pck == "non-nicu":
+            self.set_respiration_rate('15')
+        else:
+            self.set_respiration_rate('30')
+        self.set_respiration_amplitude('1.0')
+        self.set_initial_state_for_pressures()
+        self.set_temperature('37')
+
+    def set_initial_state_for_pressures(self):
+        try:
+            ip_ch2 = BuiltIn().get_variable_value("${pds_ip_ch2}", "2")
+        except:
+            ip_ch2 = "2"
+
+        try:
+            sw_pck = BuiltIn().get_variable_value("${sw_pck}", "non-nicu")
+        except:
+            sw_pck = "non-nicu"
+        
+        if sw_pck == "non-nicu":
+            self.set_IBP_dynamic_wave('1', 'ART')
+            if ip_ch2 in ['1', '3', '7']:
+                logger.trace("Simulating ART for Ch2 as PDS_IP_CH2: " + ip_ch2)
+                self.set_IBP_dynamic_wave('2', 'ART')
+            else:
+                logger.trace("Simulating ART for Ch2 as PDS_IP_CH2: " + ip_ch2)
+                self.set_IBP_dynamic_wave('2', 'RA')
+        else:
+            self.set_IBP_dynamic_wave('1', 'ART')
+            self.set_IBP_dynamic_pressure('1', '70', '40')
+            if ip_ch2 in ['1', '3', '7']:
+                logger.trace("Simulating 70/40 mmHg for Ch2 as PDS_IP_CH2: "
+                             + ip_ch2)
+                self.set_IBP_dynamic_wave('2', 'ART')
+                self.set_IBP_dynamic_pressure('2', '70', '40')
+            if ip_ch2 in ['2', '4']:
+                logger.trace("Simulating 7/0 mmHg for Ch2 as PDS_IP_CH2: "
+                             + ip_ch2)
+                self.set_IBP_dynamic_wave('2', 'ART')
+                self.set_IBP_dynamic_pressure('2', '7', '0')            
+            else:
+                logger.trace("Simulating PA 25/10 mmHg for Ch2 as PDS_IP_CH2: "
+                             + ip_ch2)
+                self.set_IBP_dynamic_wave('2', 'PA')
+
+    def go_local_control(self):
+        self._send_command('LOCAL')
+
+###############################################################################
+# ECG Commands
+###############################################################################
+    def run_ECG_wave(self, mode):
+        """ Turns on/off ECG wave simulation.
+
+        Allowed values are:
+            - TRUE  Runs ECG wave
+            - FALSE Stops ECG wave
+        """
+        self._send_command('ECGRUN=' + mode)
+
+    def run_normal_sinus_ECG(self, rate):
+        """ Runs normal adult sinus ECG at the given rate (BPM).
+
+        Allowed values are: 3 digits - from 010 to 360 with the step of 1
+        """
+        if len(rate) == 2:
+            rate = '0' + rate
+        self._send_command('NSRA=' + rate)
+
+    def run_normal_sinus_ECG_pediatric(self, rate):
+        """ Runs normal pediatric sinus ECG at the given rate (BPM).
+
+        Allowed values are: 3 digits - from 010 to 360 with the step of 1
+        """
+        if len(rate) == 2:
+            rate = '0' + rate
+        self._send_command('NSRP=' + rate)
+
+    def set_ECG_axis(self, axis):
+        """ Sets ECG axis for Normal Sinus Rhythm , adult only.
+
+        Allowed values are:
+            - INT Intermediate
+            - HOR Horizontal
+            - VER Vertical
+        """
+        self._send_command('nsrax=' + axis)
+
+    def set_ECG_amplitude(self, amplitude):
+        """ Sets ECG amplitude to the given value (mV)
+
+        Allowed values are: 3 digits with dot
+        0.05 to 0.45 with the steps of 0.05
+        0.50 to 5.00 with the steps of 0.25
+        """
+        self._send_command('ECGAMPL=' + amplitude)
+
+    def set_ST_elevation(self, deviation):
+        """ Sets ST deviation for Normal Sinus Rhythm, adult only
+
+        Allowed values are: 3 digits with dot
+        +/-0.00
+        +/-0.05
+        +/-0.10 to +/-0.80 with the steps of 0.10
+        """
+        if deviation == '0':
+            deviation = '+0.00'
+        if (re.match('^[+-]0.[1-9]$', deviation)):
+            deviation = deviation + '0'
+            pass
+        self._send_command('STDEV=' + deviation)
+
+    def set_ECG_artifact(self, artifact):
+        """ Sets ECG artifact.
+
+        Allowed values are:
+            - OFF    Off
+            - 50     50 Hz Sine
+            - 60     60 Hz Sine
+            - MSC    Muscular
+            - WAND   Wandering Baseline
+            - RESP   Respiration
+        """
+        self._send_command('EART=' + artifact)
+
+    def set_ECG_artifact_size(self, artifact_size):
+        """ Sets ECG artifact size in percent.
+
+        Size in %: 3 digits
+        025, 050 or 100
+        """
+        self._send_command('EARTSZ=' + artifact_size)
+
+    def set_ECG_artifact_lead(self, lead):
+        """ Sets ECG artifact lead.
+
+        ALL    for all leads
+        RA, LL, LA, V1, V2, V3, V4, V5 or V6  for individual lead
+        """
+        self._send_command('EARTLD=' + lead)
+
+    def run_pacer_wave(self, wave):
+        """ Sets ECG wave to the given TV Paced arrhythmia condition.
+
+        Allowed values are:
+            - ATR - Atrial
+            - ASY - Asynchronous
+            - DFS - Demand Frequent Sinus
+            - DOS - Demand Occassional Sinus
+            - AVS - Atrio-ventricular Sequential
+            - NCP - Non-Capture
+            - NFN - Non-Functional
+        """
+        self._send_command('TVPWAVE=' + wave)
+        self.run_ECG_wave('TRUE')
+
+    def set_pacer_amplitude(self, amplitude, chamber='A'):
+        """ Sets the chamber for pacemaker and amplitude to the given
+            value (mV).
+
+        Allowed values are:
+        Amplitude: 000, 002, 004, 006, 008, 010, 012, 014, 016, 018, 020, 050,
+                   100, 200, 500, 700
+        Chamber: A - Atrium OR V - Ventricle
+        """
+        polarity = 'P'
+        first_char = amplitude[:1]
+        if first_char in ('-', '+'):
+            amplitude = amplitude[1:]
+            if first_char == '-':
+                polarity = 'N'
+        amplitude = self._add_extra_zeros_prefix(amplitude, 3)
+        self.set_pacer_polarity(polarity, chamber)
+        self._send_command('TVPAMPL=' + chamber + ',' + amplitude)
+
+    def set_pacer_width(self, width, chamber='A'):
+        """ Sets the chamber for pacemaker and width to the given value
+
+        Allowed values are:
+        Width: 0.1, 0.2, 0.5, 1.0, 2.0
+        Chamber: A - Atrium OR V - Ventricle
+        """
+        self._send_command('TVPWID=' + chamber + ',' + width)
+
+    def set_pacer_polarity(self, polarity, chamber='A'):
+        """ Sets the chamber for pacemaker and polarity
+
+        Allowed values are:
+        - Polarity: P - Positive OR N - Negative
+        - Chamber: A - Atrium OR V - Ventricle
+        """
+        self._send_command('TVPPOL=' + chamber + ',' + polarity)
+
+    def set_ECG_supraventricular_arrhythmia(self, wave):
+        """ Sets ECG wave to the given supraventricular arrhythmia condition.
+
+        Allowed values are:
+            - AFC   -   Atrial fibrillation, coarse
+            - AFF   -   Atrial fibrillation, fine
+            - AFL   -   Atrial Flutter
+            - SNA   -   Sinus Arrhythmia
+            - MB80  -  Missed Beat at 80bpm
+            - MB120 - Missed Beat at 120bpm
+            - ATC   -   Atrial Tachycardia
+            - PAT   -   Paroxysmal Atrial Tachycardia
+            - NOD   -   Nodal Rhythm
+            - SVT   -   Supraventricular Tachycardia
+        """
+        if wave in ('AFC', 'AFF'):
+            allowed_commands = {'AFC': 'COARSE', 'AFF':  'FINE'}
+            self.run_atrial_fibrillation(allowed_commands.get(wave))
+        else:
+            self._send_command('SPVWAVE=' + wave)
+
+    def set_ECG_premature_arrhythmia(self, wave):
+        """ Sets ECG wave to the given premature arrhythmia condition.
+
+        Allowed values are:
+            - PAC - Premature Atrial Condition
+            - PNC - Premature Nodal Condition
+            - PVC1 - Premature Ventricular Contradiction, Left, Standard
+            - PVC1E - PVC 1, Left, Early
+            - PVC1R - PVC 1, Left, R on T
+            - PVC2 - PVC 2, Right, Standard
+            - PVC2E - PVC 2, Right, Early
+            - PVC2R - PVC 2, Right, R on T
+            - MF - Multifocal PVCs
+        """
+        self._send_command('PREWAVE=' + wave)
+
+    def set_ECG_ventricular_arrhythmia(self, wave):
+        """ Sets ECG wave to the given ventricular arrhythmia condition.
+
+        Allowed values are:
+            - PVC6M  - PVCs 6 per minute
+            - PVC12M - PVCs 12 per minute
+            - PVC24M - PVCs 24 per minute
+            - FMF    - Frequent Multi-focal PVCs
+            - TRIG   - Trigeminy
+            - BIG    - Bigeminy
+            - PAIR   - Pair of PVCs
+            - RUN5   - Run 5 PVCs
+            - RUN11  - Run 11 PVCs
+            - VTC    - Ventricular tachycardia
+            - VFBC   - Ventricular fibrillation, coarse
+            - VFBF   - Ventricular fibrillation, fine
+            - ASYS   - Asystole
+        """
+        if wave in ('VFBC', 'VFBF'):
+            allowed_commands = {'VFBC': 'COARSE', 'VFBF':  'FINE'}
+            self.run_ventricular_fibrillation(allowed_commands.get(wave))
+        elif wave == 'VTC':
+            self.set_ventricular_tachycardia('160')
+        else:
+            self._send_command('VNTWAVE=' + wave)
+
+    def run_ECG_conduction_arrhythmia(self, wave):
+        """ Sets ECG wave to the given conduction arrhythmia condition.
+
+        Allowed values are:
+            - 1DB - 1st Degree Block
+            - 2DB1 - 2nd Degree Block Type I Wenckebach
+            - 2DB2 - 2nd Degree Block Type II
+            - 3DB - 3rd Degree Block
+            - RBBB or RBB - Right Bundle Branch Block
+            - LBBB or LBB - Left Bundle Branch Block
+        """
+        if wave == 'RBB' or wave == 'LBB':
+            wave = wave + 'B'
+        self._send_command('CNDWAVE=' + wave)
+
+    def set_ACLS_arrhythmia(self, wave):
+        """ Sets ECG wave to the given ACLS arrhythmia condition.
+
+        Allowed values are:
+            - SBC - Sinus Bradycardia
+            - PTU - Poly VTach Unstable
+            - MTU - Mono VTach Unstable
+            - NSI - Narrow QRS Tach Sinus
+            - NSV - Narrow QRS Tach SVT
+            - WSI - Wide QRS Tach Sinus
+            - WSV - Wide QRS Tach SVT
+            - TDP - Torsade de Pointes
+        """
+        self._send_command('ACLSWAVE=' + wave)
+
+    def run_atrial_fibrillation(self, granularity):
+        """ Sets ECG wave to atrial fibrillation of given type.
+
+        Allowed values are: COARSE, FINE
+        """
+        self._send_command('AFIB=' + granularity)
+
+    def run_ventricular_fibrillation(self, granularity):
+        """ Sets ECG wave to venticural fibrillation of given type.
+
+        Allowed values are: COARSE, FINE
+        """
+        self._send_command('VFIB=' + granularity)
+
+    def set_ventricular_tachycardia(self, rate):
+        """ Sets ECG wave to Monophase Ventricular Tachycardia with given rate.
+
+        Allowed values are: 3 digits - from 120 to 300 with the step of 1
+        """
+        self._send_command('MONOVTACH=' + rate)
+
+    def set_poly_ventricular_tachycardia(self, polytype):
+        """ Sets ECG wave to Polyphasic Ventricular Tachycardia
+            with given rate.
+
+        Allowed values are: 1 digits - from 1 to 5.
+        """
+        self._send_command('POLYVTACH=' + polytype)
+
+    def run_square_performance_wave(self, freq):
+        """ Runs square performance wave at the given rate (Hz)
+
+        Allowed values are:
+            0.125, 2.0, 2.5
+        """
+        freq = self._add_extra_zeros_with_decimal(freq, 1, 1)
+        self._send_command('SQUARE=' + freq)
+
+    def run_triangle_performance_wave(self, freq):
+        """ Runs triangle performance wave at the given rate (Hz)
+
+        Allowed values are:
+            0.125, 2.0, 2.5
+        """
+        if freq == '2':
+            freq = freq + '.0'
+        self._send_command('TRI=' + freq)
+
+    def run_pulse_performance_wave(self, rate):
+        """ Runs pulse waveform.
+
+        Allowed values are:
+            30, 60
+        """
+        self._send_command('PULSE=' + rate)
+
+    def run_sine_performance_wave(self, freq):
+        """ Runs sine performance wave at the given rate (Hz)
+
+        Allowed values ProSim8:
+            0.05, 0.5, 1, 2, 5, 10, 25, 30, 40, 50, 60, 100, 150
+        """
+        self._send_command('SINE=' + freq)
+
+    def run_R_wave_detection(self, width, rate):
+        """ Runs R-wave at the given rate (BPM) and width
+
+        Allowed rate values are:
+            30, 60, 80, 120, 200, 250
+        Allowed width values are:
+            3 digits: 008 to 200
+        """
+
+        if len(width) == 1:
+            width = '00' + width
+        if len(width) == 2:
+            width = '0' + width
+        self._send_command('RDET=' + width + ',' + rate)
+
+    def set_R_wave_detection_amplitude(self, amplitude):
+        """ Sets R-wave amplitude to the given value (mV)
+        Allowed values are: 3 digits with dot
+            0.05 to 0.45 with the steps of 0.05
+            0.50 to 5.00 with the steps of 0.25
+        """
+        self.set_ECG_amplitude(amplitude)
+
+    def set_ECG_QRS_detection(self, width, rate):
+        """ Sets ECG wave to QRS Detection at the given width and rate.
+
+        Allowed values are:
+            width: 008 to 200 at the steps of 1
+            rate: 30, 60, 80, 120, 200 and 250
+        """
+        self._send_command('QRS=' + width + ',' + rate)
+
+    def set_ECG_tallt_rejection(self, percent):
+        """ Sets ECG wave to Tall T Rejection at the given percent.
+
+        Allowed values are: 000 to 150 with the steps of 10
+        """
+        self._send_command('TALLT=' + percent)
+
+###############################################################################
+# Respiration Commands
+###############################################################################
+
+    def run_respiration_wave(self, mode):
+        """ Turns on/off Respiration wave simulation.
+
+        Allowed values are:
+            - TRUE  Runs respiration wave
+            - FALSE Stops respiration wave
+        """
+        self._send_command('RESPRUN=' + mode)
+
+    def set_respiration_wave(self, wave):
+        """ Set Respiration wave to the given type.
+
+        Allowed values are: NORM and VENT
+        """
+        self._send_command('RESPWAVE=' + wave)
+
+    def set_respiration_rate(self, rate):
+        """ Set Respiration rate to the given value.
+
+        Allowed values are: 010 to 150 by the steps of 1
+        """
+        rate = self._add_extra_zeros_prefix(rate, 3)
+        self._send_command('RESPRATE=' + rate)
+
+    def set_respiration_ratio(self, ratio):
+        """ Sets respiration ratio to the given value.
+
+        Allowed values are: 1 to 5
+        """
+        self._send_command('RESPRATIO=' + ratio)
+
+    def set_respiration_amplitude(self, ampl):
+        """ Sets respiration amplitude to the given value.
+
+        Allowed values are: 0.00 to 5.00 with the steps of 0.05
+        """
+        if len(ampl) == 3:
+            ampl = ampl + '0'
+        self._send_command('RESPAMPL=' + ampl)
+
+    def set_respiration_baseline(self, impedance):
+        """ Sets respiration baseline impedance to the given value (ohms)
+
+        Allowed values are:
+            0500, 1000, 1500 and 2000
+        """
+        if len(impedance) == 3:
+            impedance = '0' + impedance
+        self._send_command('RESPBASE=' + impedance)
+
+    def set_respiration_lead(self, lead):
+        """ Sets respiration lead to the given value
+
+        Allowed values are: LA and LL
+        """
+        self._send_command('RESPLEAD=' + lead)
+
+    def run_respiration_apnea(self, mode):
+        """ Turns on/off Respiration apnea simulation.
+
+        Allowed values are:
+            - TRUE  Runs respiration apnea
+            - FALSE Stops respiration apnea
+        """
+        mode = self._get_true_false_for(mode)
+        self._send_command('RESPAPNEA=' + mode)
+
+###############################################################################
+# Invasive Blood Pressure Keywords
+###############################################################################
+    def set_IBP_all_channels_zero(self):
+        """ Zeros all BP channels
+        """
+        self.set_IBP_static_pressure('1', '+000')
+        self.set_IBP_static_pressure('2', '+000')
+
+    def set_IBP_static_pressure(self, channel, pressure):
+        """ Sets selected static pressure value to desired channel.
+
+        Allowed values are:
+            Channel: 1 and 2
+            Pressure: -010 to +300 with the steps of 1
+        """
+        sign = '+'
+        first_char = pressure[:1]
+        if first_char in ('-', '+'):
+            sign = first_char
+            pressure = pressure[1:]
+        pressure = self._add_extra_zeros_prefix(pressure, 3)
+        self._send_command('IBPS=' + channel + ',' + sign + pressure)
+        self._send_command('IBPP=' + channel + ',' + pressure + ',' +
+                           pressure)
+
+    def set_IBP_dynamic_wave(self, channel, wave):
+        """ Sets selected dynamic wave to desired channel.
+
+        Uses default pressures listed below, you can override these by
+        executing command 'set_IBP_dynamic_pressure' afterwards.
+
+        Allowed values are:
+            Channel: 1 or 2
+            Wave:
+                - ART - Arterial            120/80
+                - RART - Radial Artery      120/80
+                - LV - Left Ventricle       120/0
+                - LA - Left Atrium          14/4
+                - RV - Right Ventricle      25/0
+                - PA - Pulmonary Artery     25/10
+                - PAW - PA Wedge            10/2
+                - RA - Right Atrium (CVP)   15/10
+                """
+        channel_int = int(channel)
+        self.set_IBP_dynamic_pressure(
+            channel, self._systolic[wave], self._diastolic[wave])
+        self._send_command('IBPW=' + channel + ',' + wave)
+
+    def set_IBP_dynamic_pressure(self, channel, systolic, diastolic):
+        """ Sets selected dynamic pressure values to desired channel.
+
+        Allowed values are:
+            Channel: 1 and 2
+            Systolic: 000 to 300 with the steps of 1
+            Diastolic: 000 to 300 with the steps of 1
+            """
+        systolic = self._add_extra_zeros_prefix(systolic, 3)
+        diastolic = self._add_extra_zeros_prefix(diastolic, 3)
+        channel_int = int(channel)
+        self._systolic[channel_int] = systolic
+        self._diastolic[channel_int] = diastolic
+        self._send_command('IBPP=' + channel + ',' + systolic + ',' +
+                           diastolic)
+
+    def set_IBP_artifact_percent(self, channel, artifact):
+        """ Sets artifacts to selected channel by percent.
+
+        Note! Valid for ART, RART and LV measurements!
+
+        Allowed values are:
+            Channel: 1 and 2
+            Artifact: 0, 5, 10 (0 is off)
+            """
+        self._send_command('IBPARTP=' + channel + ',' + artifact)
+
+    def set_IBP_artifact_mmhg(self, channel, artifact):
+        """ Sets artifacts to selected channel by mmHg.
+
+        Note! Valid for LA, RV, PA, PAW and RA measurements!
+
+        Allowed values are:
+            Channel: 1 and 2
+            Artifact: 0, 5, 10 (0 is off)
+            """
+        self._send_command('IBPARTM=' + channel + ',' + artifact)
+
+    def set_IBP_sensitivity(self, sensitivity, channel=None):
+        """ Sets invasive pressure circuit sensitivity (in uV/V/mmHg).
+
+        Allowed values are:
+            Sensitivity: 40 and 5
+            Channel: 1 and 2
+
+        NOTE: If channel is not specified both channels will be adjusted.
+        """
+        if channel is None:
+            self._send_command('IBPSNS=' + '1' + ',' + sensitivity)
+            self._send_command('IBPSNS=' + '2' + ',' + sensitivity)
+        else:
+            self._send_command('IBPSNS=' + channel + ',' + sensitivity)
+
+###############################################################################
+# Temperature Commands
+###############################################################################
+
+    def set_temperature(self, degrees):
+        """ Sets temperature to the given value (in celcius degrees).
+
+        Allowed values are: 30.0 to 42.0 by the steps of 0.05
+        """
+        if len(degrees) == 2:
+            degrees = degrees + '.0'
+        self._send_command('TEMP=' + degrees)
+
+###############################################################################
+# Cardiac Output Commands
+###############################################################################
+
+    def set_CO_base_temp(self, temp):
+        """ Sets CO base temperature to given value (in celcius degrees).
+
+        Allowed values are: 36 to 38 by the steps of 1
+        """
+        self._send_command('COBASE=' + temp)
+
+    def set_CO_injectate_temp(self, temp):
+        """ Sets cardiac-output injectate temperature to the given value
+           (in celcius degrees)
+
+        Allowed values are: 00, 24
+        """
+        self._send_command('COINJ=' + temp)
+
+    def set_CO_wave(self, wave):
+        """ Sets cardiac-output wave to the given value.
+
+        Allowed values are:
+            - 2.5 - 2.5 l/min
+            - 5 - 5 l/min
+            - 10 - 10 l/min
+            - FAULTY - Faulty Injectate
+            - LRSHUNT - Left/Right Shunt
+            - CAL - Calibrated Pulse
+        """
+        self._send_command('COWAVE=' + wave)
+
+    def run_CO_wave(self, mode):
+        """ Turns on/off CO wave simulation.
+
+        Allowed values are:
+            - TRUE  Runs CO wave
+            - FALSE Stops CO wave
+        """
+        self._send_command('CORUN=' + mode)
+
+###############################################################################
+# Non-Invasive Blood Pressure Commands
+###############################################################################
+    def run_NIBP_simulation(self, mode):
+        """ Turns on/off NIBP simulation.
+
+        Allowed values are:
+            - TRUE  Runs NIBP simulation
+            - FALSE Stops NIBP simulation
+        """
+        self._send_command('NIBPRUN=' + mode)
+
+    def set_NIBP_dynamic_pressure(self, syst, diast):
+        """ Sets the NIBP dynamic pressure.
+
+        Allowed values for syst are:
+            3 digits - from 000 to 400 with the step of 1
+        Allowed values for diast are:
+            3 digits - from 000 to 400 with the step of 1
+        """
+        syst = self._add_extra_zeros_prefix(syst, 3)
+        diast = self._add_extra_zeros_prefix(diast, 3)
+        self._send_command('NIBPP=' + syst + ',' + diast)
+
+    def set_NIBP_volume(self, volume):
+        """ Sets the NIBP volume.
+
+        Allowed values are: 0.10 to 1.25 by the steps of 0.05
+        """
+        volume = self._add_extra_zeros_with_decimal(volume, 1, 2)
+        self._send_command('NIBPV=' + volume)
+
+    def run_NIBP_pressure_source(self, mode):
+        """ Turns on/off NIBP Pressure Source Test.
+
+        Allowed values are:
+            - TRUE  Runs NIBP Pressure Source Test.
+            - FALSE Stops NIBP Pressure Source Test.
+        """
+        self._send_command('PS=' + mode)
+
+    def set_NIBP_pressure_source(self, pressure):
+        """ Sets the NIBP dynamic pressure.
+
+        Allowed values for pressure are:
+            3 digits - from 040 to 400 with the step of 1
+        """
+        pressure = self._add_extra_zeros_prefix(pressure, 3)
+        self._send_command('PST=' + pressure)
+
+###############################################################################
+# SpO2 Commands
+###############################################################################
+    def set_spo2_saturation(self, saturation):
+        """ Sets SpO2 Saturation.
+
+        3 digits - from 000 to 100 with the step of 1
+        """
+        saturation = self._add_extra_zeros_prefix(saturation, 3)
+        self._send_command('SAT=' + saturation)
+
+    def set_spo2_perfusion(self, perfusion):
+        """ Sets SpO2 Perfusion.
+
+        2 digits - from 00.01 to 20.00 with the step of 0.01
+        """
+        perfusion = self._add_extra_zeros_with_decimal(perfusion, 2, 2)
+        self._send_command('PERF=' + perfusion)
+
+    def set_spo2_transmission(self, transmission):
+        """ Sets SpO2 Transmission in PPM.
+
+        3 digits - from 000.01 to 300.00 with the step of 0.01
+        """
+        transmission = self._add_extra_zeros_with_decimal(transmission, 3, 2)
+        self._send_command('TRANS=' + transmission)
+
+    def set_spo2_ambient_mode(self, mode):
+        """ Sets SpO2 Ambient mode.
+
+        Allowed values are:
+            - ON:  Turns ON ambient simulation
+            - OFF: Turns OFF ambient simulation
+        """
+        self._send_command('AMBM=' + mode)
+
+    def set_spo2_ambient_size(self, size):
+        """ Sets SpO2 Ambient size.
+
+        1 digits - from 0.1 to 5.0 with the step of 0.1
+        """
+        self._send_command('AMBS=' + size)
+
+    def set_spo2_ambient_frequency(self, frequency):
+        """ Sets SpO2 Ambient frequency.
+
+        Allowed values are:
+              7KHz, 8KHz, 9KHz, 10KHz
+            - DC, 50Hz, 60Hz, 1KHz, 2KHz, 3KHz, 4KHz, 5KHz, 6KHz,
+        """
+        self._send_command('AMBF=' + frequency)
+
+    def set_spo2_respiration_mode(self, mode):
+        """ Sets SpO2 respiration simulation.
+
+        Allowed values are:
+            - ON:  Turns ON respiration simulation
+            - OFF: Turns OFF respiration simulation
+        """
+        self._send_command('RESPM=' + mode)
+
+    def set_spo2_respiration_size(self, size):
+        """ Sets SpO2 respiration size.
+
+        1 digits - from 1 to 5
+        """
+        self._send_command('RESPS=' + size)
+
+    def set_spo2_type(self, _type):
+        """ Sets SpO2 Type (C-type).
+
+        Allowed values are:
+            - NELCR, MASIM, MASIMR, NONIN, OHMED, PHIL, NIHON, MINDR, BCI
+        """
+        self._send_command('SPO2TYPE=' + _type)
+
+    def set_spo2_ratio(self, ratio):
+        """ Sets SpO2 Ratio.
+
+        5 digits - from 00000 to 65535
+        """
+        self._send_command('RATIO=' + ratio)
+
+###############################################################################
+# Tools methods
+###############################################################################
+    def normal_sinus_ecg_stepper(self, start, end, speed):
+        """  Steps normal sinus heart rate from `start` to `end` with given speed.
+
+        If `end` value is lower that `start` values then values are being
+        stepped backwards.
+        `speed` is the time waited before new values will be set.
+
+        Values for `start` and `end` can be any of the values used for
+        stepping.
+
+        Allowed values for stepping are:
+            3 digits - from 010 to 360 with the step of 1
+        """
+        values = [str(x) for x in range(10, 360 + 1)]
+        self._normal_sinus_ecg_stepper(start, end, speed, values)
+        pass
+
+
+###############################################################################
+# Util methods
+###############################################################################
+
+    def _send_command(self, command):
+        logger.trace("Trying to send command: '" + command + "'" +
+                     " to Fluke ProSim 8.")
+        returnMessage = self._get_sci().send_command(command)
+        logger.trace("Return message from Fluke ProSim8: " + returnMessage)
+        if not returnMessage == "*":
+            if returnMessage == "LOCAL":
+                return
+            if "!02" in returnMessage:
+                returnMessage = self._get_sci().send_command("REMOTE")
+                returnMessage = self._get_sci().send_command(command)
+                return
+            raise Exception('Fluke ProSim 8 replied with following error ' +
+                            'message: ' + returnMessage)
+
+    def _get_sci(self):
+        if self.sim_error is True:
+            raise Exception('Fluke ProSim8 simulator not detected ' +
+                            'successfully')
+        try:
+            _sci = FlukeProSim8.sci
+            logger.trace('Existing Fluke ProSim8 serial interface found')
+            return _sci
+        except AttributeError:
+            logger.trace('Create new Fluke ProSim8 serial interface')
+            FlukeProSim8.sci = self._create_sci()
+            logger.trace('Sending detection command to Fluke ProSim8')
+            returnMessage = FlukeProSim8.sci.send_command('REMOTE')
+            if not returnMessage == "RMAIN":
+                if returnMessage is "":
+                    returnMessage = "Fluke ProSim8 simulator not found"
+                self._del_sci_instance()
+                self.sim_error = True
+                logger.trace('Detection command failed with Fluke ProSim8')
+                raise Exception(returnMessage)
+            logger.trace('Detection command succesful with Fluke ProSim8')
+            return FlukeProSim8.sci
+
+    def _set_sci_instance(self, sci):
+        FlukeProSim8.sci = sci
+
+    def _del_sci_instance(self):
+        try:
+            del FlukeProSim8.sci
+        except:
+            pass
+
+    def _create_sci(self):
+        return self.sci_class(self.com_port, 115200)
+
+    def _add_extra_zeros_prefix(self, value, digits):
+        value_len = len(value)
+        extras = digits - value_len
+        if extras >= 1:
+            value = ('0' * extras) + value
+        return value
+
+    def _add_extra_zeros_postfix(self, value, digits):
+        value_len = len(value)
+        extras = digits - value_len
+        if extras >= 1:
+            value = value + ('0' * extras)
+        return value
+
+    def _add_extra_zeros_with_decimal(self, value, int_digits=0,
+                                      decimal_digits=0):
+        sign = ''
+        first_char = value[:1]
+        if first_char in ('-', '+'):
+            sign = first_char
+            value = value[1:]
+        value_parts = value.split(".")
+        if len(value_parts) > 2:
+            return value
+        elif len(value_parts) == 2:
+            value_parts[0] = self._add_extra_zeros_prefix(
+                value_parts[0], int_digits)
+            value_parts[1] = self._add_extra_zeros_postfix(
+                value_parts[1], decimal_digits)
+            return sign + value_parts[0] + '.' + value_parts[1]
+        elif len(value_parts) == 1:
+            decimals = ''
+            value_parts[0] = self._add_extra_zeros_prefix(
+                value_parts[0], int_digits)
+            if decimal_digits > 0:
+                decimals = '.' + self._add_extra_zeros_postfix(
+                    '', decimal_digits)
+            return sign + value_parts[0] + decimals
+
+    def _get_true_false_for(self, on_off):
+        onoff = on_off.lower()
+        if onoff == 'on':
+            return 'TRUE'
+        if onoff == 'off':
+            return 'FALSE'
+        return on_off
