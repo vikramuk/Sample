@@ -1,0 +1,158 @@
+Introduction to Appium:
+Appium is an open-source tool for automating native, mobile web, and hybrid applications on iOS and Android platforms. Native apps are those written using the iOS or Android SDKs.Mobile web apps are web apps accessed using a mobile browser (Appium supports Safari on iOS and Chrome or the built-in 'Browser' app on Android). Hybrid apps have a wrapper around a "webview" -- a native control that enables interaction with web content. Projects like Phonegap, make it easy to build apps using web technologies that are then bundled into a native wrapper, creating a hybrid app.
+Appium Concepts
+Client/Server Architecture
+Appium is at its heart a webserver that exposes a REST API. It receives connections from a client, listens for commands, executes those commands on a mobile device, and responds with an HTTP response representing the result of the command execution.
+Appium Server
+Appium is a server written in Node.js. It can be built and installed from source or installed directly from NPM.
+Appium Clients
+There are client libraries (in Java, Ruby, Python, PHP, JavaScript, and C#) which support Appium's extensions to the WebDriver protocol. When using Appium, you want to use these client libraries instead of your regular WebDriver client.
+Appium Envirnoment Setup (Windows).
+1.	Set up all JAVA_HOME and ANDROID_HOME variables in system. (Must have JDK beyond 1.7)
+2.	Install .Net version above 4.x.
+3.	Install eclipse with Android configured (For Client code execution).
+4.	Start Appium server by clicking its exe file. Once server is successfully started, it will show log like..
+> Starting Node Server > info: Welcome to Appium v1.2.3 (REV 90d746b373f55e8653a251d2ce8c62df37941919) > info: Appium REST http interface listener started on 127.0.0.1:8080----------(Server started on thing address.) > info: [debug] Non-default server args: {"address":"127.0.0.1","port":8080,"logNoColors":true,"deviceName":"R32CB04AAKV","platformName":"Android","platformVersion":"19","automationName":"Appium"} > info: Console LogLevel: debug
+5.	Now go to eclipse to write and execute client code. Test cases can be executed either through TESTNG or JUNIT.
+6.	In eclipse project ensure that selenium-server-standalone-2.43.1.jar (or higher version) (http://www.seleniumhq.org/download/) is placed. This helps for Web Driver API. Also ensure that RemoteDriver executes it’s code on same address on which appium server is started.
+                    Eg.  Driver= new RemoteWebDriver(new URL("http://127.0.0.1:4723/wd/hub"),capabilities);
+7.	Now connect the device through USB and ensure device has developer mode enabled and execute the client code. Based on client code capability, logs will be displayed accordingly.
+ERROR SCENARIO:
+In case Appium is unable to find connected device through ADB. Please ensure that system settings has TEMP and TMP user variable.
+Image:Example.jpg
+
+
+Android WebView Automation Using Appium
+Scope: This document keeps the information about Appium support for automation testing of HTML page which inside android WebView. This document will demonstrate how to use Appium to automate HTML page with android WebView where target device will have Android 4.4 (Kitkat) onwards and older than Android 4.4 (Kitkat).
+Purpose: We are developing android app for medical device. In our application few pages will be developed by using HTML components. As per rule we need to write automation testing code for every screen and every functionality. Initially we were not able to use Appium for few pages which have been developed using HTML.
+Tools and Libraries: We have used below tools and libraries to check the feasibility of HTML page automation inside Android WebView and to build a POC.
+      1. Appium - 1.3.4.1 (For Windows)
+      2. Appium client - 2.1.0 (Java Client)
+Note: We are using Java to develop and automate our project. So we have taken Appium java client.
+Target Android Device: Below mentioned devices have been used for testing.
+      1. Onyx Tablet with Android 4.0.3 (ICS)
+      2. Nexus Tablet with Android 4.4 (Kitkat)
+How Appium Works With Android WebView ? Appium works with Android WebView in two different ways. Appium comes with built-in hybrid(Android application developed using HTML with WebView support) support via Chromedriver. Appium also uses Selendroid under the hood for WebView support on devices older than 4.4. Appium works with two contexts (NATIVE_APP and WEBVIEW) to test application. By default Appium uses NATIVE_APP context which is required to test native components of android. But to test HTML components inside android WebView Appium needs to change context to WEBVIEW. Sample code is below which demonstrate how to use Appium for Android WebView.
+Sample HTML Code which we are loading in our WebView inside our sample Android application:
+<!DOCTYPE html> <html> <head> <meta charset="ISO-8859-1"> <title>Test</title> </head> <body onload="addEvent()">
+<input type="text" name="first_name" value=""id="first_name"/>
+
+<input type="text" name="last_name" value="" id="last_name"/>
+
+<input type="text" name="dateofbirth" value="" id="dateofbirth"/>
+
+<input type="text" name="city" value="" id="city"/>
+
+<select name=" company" id="company"> <option>SELECT</option> <option>GE</option> <option>GE HC</option> </select>
+
+<input type="button" value="Save Employee" id = "save_employee"/>
+</body> </html>
+
+IConstant interface keeps constants which will be used to set desired capabilities which is required to start Appium:
+public interface IConstant {
+          String APK_PATH = "Physical path of APK file";
+          String APPIUM_SERVER_URL = "Appium server URL";
+          String DEVICE_AUTOMATION_NAME = "Selendroid";
+          String DEVICE = "device";
+          String PLATFORM_NAME = "Android";
+          String PLATFORM_VERSION = "4.0";
+          String PACKAGE_NAME = "com.example.apptotestautomaticics";
+          String ACTIVITY_NAME = ".MainActivity";
+          String DEVICE_NAME = "0a5c01c343816097";
+}
+
+AppiumWebViewTest class contains the sample code to automate HTML page which is inside android WebView:
+import io.appium.java_client.AppiumDriver;
+import io.appium.java_client.MobileElement;
+import io.appium.java_client.remote.MobileCapabilityType;
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.remote.CapabilityType;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.support.ui.Select;
+import org.testng.IClass;
+/**
+* AppiumWebViewTest class contains the procedure to test HTML content inside android webview.
+* @author 212431882
+*
+*/
+public class AppiumWebViewTest implements IConstant {
+   private DesiredCapabilities mCapabilities;
+   private AppiumDriver mDriver ;
+   private File mApplication;
+   public static void main( String[] args ) throws MalformedURLException, InterruptedException {  
+       AppiumWebViewTest ob = new AppiumWebViewTest();
+       ob.setDesiredCapabilities();
+       ob.switchToWebView();
+       ob.testWebView();
+   }
+/**
+* This method is responsible to change the Appium mode from NATIVE_APP to WEBVIEW_0 mode
+* @throws InterruptedException
+*/
+private void switchToWebView() throws InterruptedException {
+   //Waiting for 3 seconds to complete webview loading.
+    Thread.sleep(3000); 
+   // This method returns all contexts supported by appium.
+    Set<String> contextNames = mDriver.getContextHandles(); 
+     for (String contextName : contextNames) {
+        System.out.println(contextName);
+        if (contextName.contains("WEBVIEW")){
+        //Swithching context to WEBVIEW. By default context is NATIVE_APP.
+           mDriver.context(contextName); 
+        }
+      }
+   }
+/**
+This method is responsible to set all desire capabilities and initiate appium to start work with target device with required APK file.
+@throws MalformedURLException
+/
+private void setDesiredCapabilities() throws MalformedURLException {
+       mApplication = new File(APK_PATH);
+       mCapabilities = new DesiredCapabilities();
+       mCapabilities.setCapability(DEVICE, DEVICE_AUTOMATION_NAME);
+       //This capability is only required for device which has android older than 4.4(kitkat).
+       mCapabilities.setCapability(MobileCapabilityType.AUTOMATION_NAME,DEVICE_AUTOMATION_NAME);
+       mCapabilities.setCapability(MobileCapabilityType.BROWSER_NAME, "");
+       mCapabilities.setCapability(MobileCapabilityType.PLATFORM_NAME, PLATFORM_NAME);
+       mCapabilities.setCapability(MobileCapabilityType.PLATFORM_VERSION, PLATFORM_VERSION);
+       mCapabilities.setCapability(MobileCapabilityType.DEVICE_NAME, DEVICE_NAME);
+       mCapabilities.setCapability(MobileCapabilityType.APP, mApplication.getAbsolutePath());
+       mCapabilities.setCapability(MobileCapabilityType.APP_PACKAGE, PACKAGE_NAME);
+       mCapabilities.setCapability(MobileCapabilityType.APP_ACTIVITY, ACTIVITY_NAME);
+       mDriver = new AppiumDriver(new URL(APPIUM_SERVER_URL), mCapabilities) {
+           @Override
+           public MobileElement scrollToExact( String arg0 ) {
+               // TODO Auto-generated method stub
+               return null;
+           }
+           @Override
+           public MobileElement scrollTo( String arg0 ) {
+               // TODO Auto-generated method stub
+               return null;
+           }
+       };
+   }
+/**
+ * This method is responsible to test HTML page automatically which is inside android webview.
+ */
+public void testWebView() {
+       WebElement inputFieldOne = mDriver.findElement(By.id("first_name"));
+       inputFieldOne.sendKeys("GE Healthcare");
+       WebElement inputFieldTwo = mDriver.findElement(By.id("last_name"));
+       inputFieldTwo.sendKeys("MIC");
+       WebElement inputFieldThree = mDriver.findElement(By.id("dateofbirth"));
+       inputFieldThree.sendKeys("ATTENDANT");
+       WebElement inputFieldFour = mDriver.findElement(By.id("city"));
+       inputFieldFour.sendKeys("BANGALORE DC");
+       WebElement inputFieldSix = mDriver.findElement(By.id("gender"));
+       new Select( inputFieldSix ).selectByVisibleText( "MALE" );
+       WebElement inputFieldFIVE = mDriver.findElement(By.id("save_employee"));
+       inputFieldFIVE.click();
+   }
+}
