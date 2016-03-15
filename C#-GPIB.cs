@@ -57,10 +57,12 @@ namespace CsharpExample
                 myDmm.WriteString(":OUTP:STAT 0", true);                    // Disable Output
                 myDmm.WriteString(":SOUR:FREQ:CW 1.1512 MHZ", true);
                 DmmClass.CheckDMMError(myDmm); //Check if the DMM has any errors
-                myDmm.WriteString(":SOUR:VOLT:LEV:IMM:AMPL 0.1", true);
+                myDmm.WriteString(":SOUR:VOLT:LEV:IMM:AMPL 0.1 VPP", true);
                 DmmClass.CheckDMMError(myDmm); //Check if the DMM has any errors
-                myDmm.WriteString(":SOUR:BURS:PHAS 0 DEG", true);
+                myDmm.WriteString(":SOUR:BURS:PHAS 0", true);
                 DmmClass.CheckDMMError(myDmm); //Check if the DMM has any errors
+                //myDmm.WriteString(":SOUR:BURS:STAT 1", true);
+                //DmmClass.CheckDMMError(myDmm); //Check if the DMM has any errors
                 myDmm.WriteString(":SOUR:BURS:NCYC 50000", true);
                 DmmClass.CheckDMMError(myDmm); //Check if the DMM has any errors
                 myDmm.WriteString(":SOUR:BURS:INT:PER 0.1 S", true);
