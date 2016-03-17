@@ -1,59 +1,55 @@
-import io.appium.java_client.android.AndroidDriver;
+from appium import webdriver
+from time import sleep
+import serial
+import sys
+import os
+import unittest
+import datetime
+import subprocess
+from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
 
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.concurrent.TimeUnit;
+''' CONFIGURATION'''
+DEVICE = '19b801a117'  #19b801a117  #0a5c01c342e18297
+DEVICENAME= 'Android'
+APPIUM_URL = 'http://localhost:4723/wd/hub'
+DRIVER = None
+'''
+This Function Sends Appium Commands and listens to the Serial port.
+'''
 
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.remote.CapabilityType;
-import org.openqa.selenium.remote.DesiredCapabilities;
-import org.openqa.selenium.remote.RemoteWebDriver;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.support.ui.WebDriverWait;
-import org.testng.annotations.*;
+class AndroidDateTests(unittest.TestCase):
+	"Class to run tests against the Lotus APP"
+	def setUp(self):		
+		print "\nSetup\n"
+		desired_caps1 = {}
+		desired_caps1['platformName'] = DEVICENAME
+		desired_caps1['platformVersion'] = '4.2'
+		desired_caps1['deviceName'] = DEVICE
+		desired_caps1['device'] = DEVICENAME 		
+		desired_caps1['app'] = os.path.abspath(os.path.join(os.path.dirname(__file__),'app/LotusApp-debug.apk'))
+		desired_caps1['appPackage'] = 'com.ge.med.mic.lotus'
+		desired_caps1['appActivity'] = 'com.ge.med.mic.lotus.activities.LotusMonitoringActivity'
+		desired_caps1['useKeyStore']= 0		
+		#self.driver = webdriver.Remote(APPIUM_URL, desired_caps1)
+		self.driver = webdriver.Remote(APPIUM_URL, desired_caps1)
+		         
+	def test_getDate(self):		
+		for i in range(1,100):
+			sys_date = self.driver.find_element_by_id('com.ge.med.mic.lotus:id/us1_fhr')
+			elem_date = sys_date.text
+			print elem_date
+			print datetime.datetime.now()
+		
+	def tearDown(self):
+		"Tear down the test"
+		#self.driver.quit()
 
-public class androidExample {
-	WebDriver driver = null;
-	@BeforeMethod
-	public void setup() {
-		File appDir = new File("D:\\Lotus\\Work\\Appium\\App");
-		File app = new File(appDir, "LotusApp-debug.apk");
-		DesiredCapabilities capabilities = new DesiredCapabilities();
-		capabilities.setCapability("device","Android");  //19b801a117  or 0a5c01c342e18297
-		capabilities.setCapability("deviceName","19b801a117");  //19b801a117  or 0a5c01c342e18297
-		capabilities.setCapability(CapabilityType.BROWSER_NAME, "Android");
-		capabilities.setCapability(CapabilityType.VERSION, "4.4");
-		capabilities.setCapability(CapabilityType.PLATFORM, "Android");
-		// Here we mention the app's package name, to find the package name we  have to convert .apk file into java class files
-		capabilities.setCapability("app-package","com.ge.med.mic.lotus");
-		//Here we mention the activity name, which is invoked initially as app's first page.
-		capabilities.setCapability("app-activity","com.ge.med.mic.lotus.activities.LotusMonitoringActivity");
-		capabilities.setCapability("app-wait-activity","com.ge.med.mic.lotus.activities.LotusMonitoringActivity");
-		capabilities.setCapability("app", app.getAbsolutePath());		
-		capabilities.setCapability("useKeyStore", true);
-		capabilities.setCapability("keystorePath","D:\\Lotus\\Work\\Appium\\debug.keystore");        
-		capabilities.setCapability("keystorePassword","Android");
-		capabilities.setCapability("keyAlias", "androiddebugkey");
-		capabilities.setCapability("keyPassword","Android");		
-		try {
-			driver = new AndroidDriver(new URL("http://127.0.0.1:2720/wd/hub"), capabilities);
-		} catch (MalformedURLException e) {			
-			e.printStackTrace();
-		}
-		driver.manage().timeouts().implicitlyWait(80, TimeUnit.SECONDS);  
-	}
 
-	@Test
-	public void loginTest() throws Exception {
-		System.out.println ("Hello");
-	}
-
-	@AfterMethod
-	public void tearDown() {
-		driver.quit();
-	}
-
-}
+#---START OF SCRIPT
+if __name__ == '__main__':
+    suite = unittest.TestLoader().loadTestsFromTestCase(AndroidDateTests)
+    unittest.TextTestRunner(verbosity=2).run(suite)
+    print "End\n"
