@@ -53,4 +53,6 @@ def set_Values_USB(period):
 if __name__ == "__main__":
     set_Values_USB(0.8)
 
+#https://d3fdwrtpsinh7j.cloudfront.net/Docs/document/E4400-90505.pdf
+#http://exodus.poly.edu/~kurt/manuals/manuals/HP%20Agilent/HP%20EPM%20SERIES%20SOFTWARE%20AND%20DOCUMENATION/HP%20E4438C%20Documentation/020424_1007%20(D)/examples/
 
