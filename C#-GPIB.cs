@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-//using System.Linq;
 using System.Text;
 using Ivi.Visa.Interop;
 //'' """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -26,28 +25,24 @@ namespace CsharpExample
     {
         static void Main(string[] args)
         {
-               /*'This example program illustrates how to connect to an instrument
-        'Gives an example setup for all major function configurations (DCV, DCI, Ohms2W, Ohms 4W, ACV, ACI, Temp, Freq). 
-        'Gets a single reading from the DMM for each function and reports the result. 
-        'Ohms 4W shows an autorange setup while all other functions show a direct range setup.
-                * */
-            FunctionsExample DmmClass = new FunctionsExample(); //Create an instance of this class so we can call functions from Main
-                //For more information on getting started using VISA COM I/O operations see the app note located at:
-                //http://cp.literature.agilent.com/litweb/pdf/5989-6338EN.pdf
-                Ivi.Visa.Interop.ResourceManager rm = new Ivi.Visa.Interop.ResourceManager(); //Open up a new resource manager
-                Ivi.Visa.Interop.FormattedIO488 myDmm = new Ivi.Visa.Interop.FormattedIO488(); //Open a new Formatted IO 488 session 
+
+            FunctionsExample DmmClass = new FunctionsExample(); 
+            //Create an instance of this class so we can call functions from Main
+            //For more information on getting started using VISA COM I/O operations see the app note located at:
+            //http://cp.literature.agilent.com/litweb/pdf/5989-6338EN.pdf
+            Ivi.Visa.Interop.ResourceManager rm = new Ivi.Visa.Interop.ResourceManager(); //Open up a new resource manager
+            Ivi.Visa.Interop.FormattedIO488 myDmm = new Ivi.Visa.Interop.FormattedIO488(); //Open a new Formatted IO 488 session 
             /*
                 AGILENT_33220A = "USB0::0x0957::0x0407::MY44021621::0::INSTR"
                 AGILENT_33522A = "USB0::0x0957::0x2307::MY50003961::0::INSTR"
             */
             try
-            {                
+            {
                 string AGILENT_33220A = "USB0::0x0957::0x0407::MY44021621::0::INSTR";
                 string AGILENT_33522A = "USB0::0x0957::0x2307::MY50003961::0::INSTR";
 
                 myDmm.IO = (IMessage)rm.Open(AGILENT_33220A, AccessMode.NO_LOCK, 2000, ""); //Open up a handle to the DMM with a 2 second timeout
-                myDmm.IO.Timeout = 3000; //You can also set your timeout by doing this command, sets to 3 seconds
-                
+                myDmm.IO.Timeout = 500; //You can also set your timeout by doing this command, sets to 3 seconds
                 //First start off with a reset state
                 myDmm.IO.Clear(); //Send a device clear first to stop any measurements in process
                 myDmm.WriteString("*RST", true); //Reset the device
@@ -61,13 +56,17 @@ namespace CsharpExample
                 DmmClass.CheckDMMError(myDmm); //Check if the DMM has any errors
                 myDmm.WriteString(":SOUR:BURS:PHAS 0", true);
                 DmmClass.CheckDMMError(myDmm); //Check if the DMM has any errors
-                //myDmm.WriteString(":SOUR:BURS:STAT 1", true);
-                //DmmClass.CheckDMMError(myDmm); //Check if the DMM has any errors
+                System.Threading.Thread.Sleep(5000);
+                if (true)
+                {
+                    myDmm.WriteString(":SOUR1:BURS:STAT 0", true);
+                    DmmClass.CheckDMMError(myDmm); //Check if the DMM has any errors
+                }
                 myDmm.WriteString(":SOUR:BURS:NCYC 50000", true);
                 DmmClass.CheckDMMError(myDmm); //Check if the DMM has any errors
                 myDmm.WriteString(":SOUR:BURS:INT:PER 0.1 S", true);
                 DmmClass.CheckDMMError(myDmm); //Check if the DMM has any errors
-                
+
                 myDmm.WriteString(":SOUR:FREQ?", true);
                 string FreqRes = myDmm.ReadString();
                 myDmm.WriteString(":SOUR:BURS:INT:PER?", true);
@@ -79,7 +78,9 @@ namespace CsharpExample
                 myDmm.WriteString(":SOUR:BURS:NCYC?", true);
                 string NumCycRes = myDmm.ReadString();
                 DmmClass.CheckDMMError(myDmm); //Check if the DMM has any errors
-                Console.WriteLine("Current Values are:" + "Period:" + PeriodRes + "Frequency:" + FreqRes + "Amplitude" + AmplitudeRes + "Phase" + PhasResult + "Cycles" + NumCycRes); 
+                Console.WriteLine("Current Values are:" + "Period:" + PeriodRes + "Frequency:" + FreqRes + "Amplitude" + AmplitudeRes + "Phase" + PhasResult + "Cycles" + NumCycRes);
+                myDmm.WriteString(":SOUR1:BURS:STAT 1", true);                    // Enable Output
+                DmmClass.CheckDMMError(myDmm); //Check if the DMM has any errors
                 myDmm.WriteString(":OUTP:STAT 1", true);                    // Enable Output
                 DmmClass.CheckDMMError(myDmm); //Check if the DMM has any errors
             }
@@ -91,13 +92,14 @@ namespace CsharpExample
             {
                 //Close out your resources
                 try { myDmm.IO.Close(); }
-                catch{}
-                try{ System.Runtime.InteropServices.Marshal.ReleaseComObject(myDmm);}
-                catch {}
-                try{
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(rm);
+                catch { }
+                try { System.Runtime.InteropServices.Marshal.ReleaseComObject(myDmm); }
+                catch { }
+                try
+                {
+                    System.Runtime.InteropServices.Marshal.ReleaseComObject(rm);
                 }
-                catch {}
+                catch { }
                 Console.WriteLine("Press any key to continue...");
                 Console.ReadKey();
 
@@ -113,16 +115,17 @@ namespace CsharpExample
             //If there is an error, read out all of the errors and return them in an exception
             else
             {
-                string errStr2 = "";                
+                string errStr2 = "";
                 do
                 {
                     myDmm.WriteString("SYST:ERR?", true);
                     errStr2 = myDmm.ReadString();
                     if (!errStr2.Contains("No error")) errStr = errStr + "\n" + errStr2;
 
-                } while (!errStr2.Contains("No error"));                
+                } while (!errStr2.Contains("No error"));
                 throw new Exception("Exception: Encountered system error(s)\n" + errStr);
             }
         }
     }
 }
+#http://cp.literature.agilent.com/litweb/pdf/5991-0603EN.pdf
