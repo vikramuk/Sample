@@ -1,0 +1,74 @@
+BDD:
+http://blog.czeczotka.com/2014/08/17/writing-cucumber-jvm-step-definitions/
+http://blog.czeczotka.com/2014/08/17/writing-cucumber-jvm-step-definitions/
+https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html
+Begin and End the Regex using ^ and $
+	"^I have a cucumber step$"
+			Given I have a cucumber step
+			Given I have a cucumber step and a Salad
+	
+Numbers and Strings in the String:	
+	"^I have (\\d+) (.*) in my basket$"
+			"I have {0} {1} in my basket"
+	
+Match Multiple Strings for Features
+	"^I have a (?:tasty|nasty|rusty) cucumber step$"
+			Given I have a nasty cucumber step # 
+			Given I have a rusty cucumber step # 
+			Given I have a tasty cucumber step # 
+	
+Multiple Singular/Plural Combinations
+	"^There (?:is|are) (\\d+) (?:cats?|ox|oxen) fed by (\\d+) (?:persons?|people)$"
+	"{0} animal(s) fed by {1} person(s)"
+			Given There is 1 cat fed by 1 person
+			Given There are 2 cats fed by 1 person
+			Given There are 2 cats fed by 2 persons
+			Given There are 2 cats fed by 3 people
+			Given There is 1 ox fed by 4 persons
+			Given There are 3 oxen fed by 5 people
+
+From Data Tables
+		"^I have the following order$"
+			Given I have the following order
+			| vegetable | amount | cost |
+			| cucumber  |   4    |  10  |
+			| carrot    |   5    |   6  |
+			| potato    |   6    |   4  |
+			
+Map data tables to domain objects
+		"^I have another order$"
+			Given I have the following order
+			| vegetable | amount | cost |
+			| cucumber  |   4    |  10  |
+			| carrot    |   5    |   6  |
+			| potato    |   6    |   4  |
+
+
+http://www.toolsqa.com/cucumber/options/
+
+CucumberOptions:
+	tags
+	strict
+	Dry Run
+	Monochrome
+	Features :	"Feature“/“src/test/features“
+	Glue	 : glue = “stepDefinition“/glue = “src/test/stepDeinition“
+	Format   : format = {“pretty“}
+		   format = {“json:Folder_Name/cucumber.json“}
+		   format = {“html:Folder_Name“}
+		   format = { “junit:Folder_Name/cucumber.xml“}
+
+
+http://www.toolsqa.com/cucumber/gherkin-keywords/
+	Feature
+	Background
+	Scenario
+	Given
+	When
+	Then
+	And
+	But
+	*
+	
+cucumber.options
+CucumberOptions
