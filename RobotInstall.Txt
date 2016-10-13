@@ -1,0 +1,8 @@
+#Robot Install 
+#http://www.ufthelp.com/2015/10/setup-for-robot-framework-automation.html
+pip install robotframework
+pip install robotframework==2.9b1
+pip install --upgrade robotframework
+pip install robotframework-selenium2library
+import Selenium2Library
+pip install robotframework-ride
