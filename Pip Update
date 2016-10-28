@@ -1,0 +1,1 @@
+python -m pip install --index-url=http://pypi.python.org/simple/ --trusted-host pypi.python.org -U robotframework==2.9.2
