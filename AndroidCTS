@@ -1,0 +1,3 @@
+java -cp ddmlib-prebuilt.jar;tradefed-prebuilt.jar;hosttestlib.jar;cts-tradefed.jar -DCTS_ROOT=D:\ProgApps\CTS\android-cts\tools\ com.android.cts.tradefed.command.CtsConsole
+
+D:\ProgApps\CTS\android-cts\tools\android-cts\repository\testcases
