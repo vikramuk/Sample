@@ -1,0 +1,92 @@
+import urllib, urllib2
+#http://stackoverflow.com/questions/3020979/send-xml-file-to-http-using-python
+URL = "http://localhost:8270/"
+METHOD = "POST"
+#XML = "<xml />"
+#XML = '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>start_simulator</string></value></param><param><value><array><data><value><string>COM5</string></value></data></array></value></param></params></methodCall>':XML})
+get_supported_devices = '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>get_supported_devices</string></value></param><param><value><array><data><value><string>COM4</string></value></data></array></value></param></params></methodCall>'
+add_device = '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>add_device</string></value></param><param><value><array><data><value><string>COM4</string></value><value><string>U-TruSignal</string></value></data></array></value></param></params></methodCall>'
+get_devices = '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>get_devices</string></value></param><param><value><array><data></data></array></value></param></paams></methodCall>'
+get_device_info = '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>get_device_info</string></value></param><param><value><array><data><value><string>COM4</string></vlue></data></array></value></param></params></methodCall>'
+get_parameters = '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>get_parameters</string></value></param><param><value><array><data><value><string>COM4</string></value></data></array></value></param></params></methodCall>'
+get_supported_waveforms_pleth = '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>get_supported_waveforms</string></value></param><param><value><array><data><value><string>U-TruSignal</string></value><value><string>PlethWave</string></value></data></array></value></param></params></methodCall>'
+get_supported_waveforms_pulse = '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>get_supported_waveforms</string></value></param><param><value><array><data><value><string>U-TruSignal</string></value><value><string>PulseDetect</string></value></data></array></value></param></params></methodCall>'
+starting_simulator = '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>start_simulator</string></value></param><param><value><array><data><value><string>COM4</string></value></data></array></value></param></params></methodCall>'
+simulate_parameter_pulse = '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>simulate_parameter</string></value></param><param><value><array><data><value><string>COM4</string></value><value><string>Pulse Rate</string></value><value><string>98</string></value></data></array></value></param><param><value><struct><member><name>Send</name><value><boolean>1</boolean></value></member></struct></value></param></params></methodCall>'
+simulate_parameter_saturation = '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>simulate_parameter</string></value></param><param><value><array><data><value><string>COM4</string></value><value><string>Saturation</string></value><value><string>100</string></value></data></array></value></param><param><value><struct><member><name>Send</name><value><boolean>1</boolean></value></member></struct></value></param></params></methodCall>'
+stopping_simulator = '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>stop_simulator</string></value></param><param><value><array><data><value><string>COM4</string></value></data></array></value></param></params></methodCall>'
+removed_device = '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>remove_device</string></value></param><param><value><array><data><value><string>COM4</string></value></data></array></value></param></params></methodCall>'
+
+
+headers = {
+           'Referer': 'http://localhost:8270/gui/',          
+           'Accept-Language': 'en-US,en',
+           'Connection': 'keep-alive',           
+           'Content-Type': 'application/xml',
+           'charset':'UTF-8',
+           'Accept': '*/*'           
+           }
+''' # Superfluous Attributes
+         "Content-Length": "275",
+         "Accept-Encoding": "gzip, deflate, br",
+         "DNT": "1",
+         "q":"0.8",            
+         "Cookie": "jenkins-timestamper-offset=-19800000"
+'''
+           
+def send_command(command):
+    #parameter = urllib.urlencode({'XML': XML})    
+    #response = urllib.urlopen(URL, parameter)
+    #http://stackoverflow.com/questions/24882191/using-urllib2-to-make-a-post-request-with-headers
+    #form ={'XML': command}
+    data = (command)    
+    #data = urllib.urlencode(form)        
+    try:
+        request = urllib2.Request(URL,data, headers)        
+        #http://stackoverflow.com/questions/6448430/what-does-urllib2-requesturl-do-and-how-do-i-print-view-it        
+        response = urllib2.urlopen(request)
+        print response.read()
+    except IOError as e:
+        print "Error:", e
+    
+
+if __name__=="__main__":
+    #send_command(get_supported_devices)
+    #send_command(add_device)
+    #send_command(get_devices)
+    #send_command(get_device_info)
+    #send_command(get_parameters)
+    #send_command(starting_simulator)
+    #send_command(get_supported_waveforms_pleth)
+    #send_command(get_supported_waveforms_pulse)
+    #debugging
+    send_command('<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>simulate_parameter</string></value></param><param><value><array><data><value><string>COM4</string></value><value><string>Pulse Rate</string></value><value><string>98</string></value></data></array></value></param><param><value><struct><member><name>Send</name><value><boolean>1</boolean></value></member></struct></value></param></params></methodCall>')
+    #send_command(simulate_parameter_pulse)    
+    #send_command(simulate_parameter_saturation)    
+    #send_command(stopping_simulator)    
+
+	
+rem GET Supported 
+curl -H "Connection: keep-alive;Origin: http://localhost:8270;Content-Type: application/xml;charset=UTF-8;Accept: */*;Referer: http://localhost:8270/gui/;Accept-Language: en-US,en"  -d '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>get_supported_devices</string></value></param><param><value><array><data><value><string>COM4</string></value></data></array></value></param></params></methodCall>'  http://localhost:8270/
+rem Add Device
+curl -H "Connection: keep-alive;Origin: http://localhost:8270;Content-Type: application/xml;charset=UTF-8;Accept: */*;Referer: http://localhost:8270/gui/;Accept-Language: en-US,en"  -d '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>add_device</string></value></param><param><value><array><data><value><string>COM4</string></value><value><string>U-TruSignal</string></value></data></array></value></param></params></methodCall>'  http://localhost:8270/
+rem GET Device
+curl -H "Connection: keep-alive;Origin: http://localhost:8270;Content-Type: application/xml;charset=UTF-8;Accept: */*;Referer: http://localhost:8270/gui/;Accept-Language: en-US,en"  -d '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>get_devices</string></value></param><param><value><array><data></data></array></value></param></paams></methodCall>'  http://localhost:8270/
+rem GET Device Info
+curl -H "Connection: keep-alive;Origin: http://localhost:8270;Content-Type: application/xml;charset=UTF-8;Accept: */*;Referer: http://localhost:8270/gui/;Accept-Language: en-US,en"  -d '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>get_device_info</string></value></param><param><value><array><data><value><string>COM4</string></vlue></data></array></value></param></params></methodCall>'  http://localhost:8270/
+rem Get parameters
+curl -H "Connection: keep-alive;Origin: http://localhost:8270;Content-Type: application/xml;charset=UTF-8;Accept: */*;Referer: http://localhost:8270/gui/;Accept-Language: en-US,en"  -d '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>get_parameters</string></value></param><param><value><array><data><value><string>COM4</string></value></data></array></value></param></params></methodCall>'  http://localhost:8270/
+rem Get parameter pleth
+curl -H "Connection: keep-alive;Origin: http://localhost:8270;Content-Type: application/xml;charset=UTF-8;Accept: */*;Referer: http://localhost:8270/gui/;Accept-Language: en-US,en"  -d '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>get_supported_waveforms</string></value></param><param><value><array><data><value><string>U-TruSignal</string></value><value><string>PlethWave</string></value></data></array></value></param></params></methodCall>'  http://localhost:8270/
+rem Get Parameter Pulse
+curl -H "Connection: keep-alive;Origin: http://localhost:8270;Content-Type: application/xml;charset=UTF-8;Accept: */*;Referer: http://localhost:8270/gui/;Accept-Language: en-US,en"  -d '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>get_supported_waveforms</string></value></param><param><value><array><data><value><string>U-TruSignal</string></value><value><string>PulseDetect</string></value></data></array></value></param></params></methodCall>'  http://localhost:8270/
+rem Start Simulator
+curl -H "Connection: keep-alive;Origin: http://localhost:8270;Content-Type: application/xml;charset=UTF-8;Accept: */*;Referer: http://localhost:8270/gui/;Accept-Language: en-US,en"  -d '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>start_simulator</string></value></param><param><value><array><data><value><string>COM4</string></value></data></array></value></param></params></methodCall>'  http://localhost:8270/
+rem Simulator Pulse
+curl -H "Connection: keep-alive;Origin: http://localhost:8270;Content-Type: application/xml;charset=UTF-8;Accept: */*;Referer: http://localhost:8270/gui/;Accept-Language: en-US,en"  -d '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>simulate_parameter</string></value></param><param><value><array><data><value><string>COM4</string></value><value><string>Pulse Rate</string></value><value><string>98</string></value></data></array></value></param><param><value><struct><member><name>Send</name><value><boolean>1</boolean></value></member></struct></value></param></params></methodCall>'  http://localhost:8270/
+rem Simulator Saturation
+curl -H "Connection: keep-alive;Origin: http://localhost:8270;Content-Type: application/xml;charset=UTF-8;Accept: */*;Referer: http://localhost:8270/gui/;Accept-Language: en-US,en"  -d '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>simulate_parameter</string></value></param><param><value><array><data><value><string>COM4</string></value><value><string>Saturation</string></value><value><string>100</string></value></data></array></value></param><param><value><struct><member><name>Send</name><value><boolean>1</boolean></value></member></struct></value></param></params></methodCall>'  http://localhost:8270/
+rem Stop Simulator
+curl -H "Connection: keep-alive;Origin: http://localhost:8270;Content-Type: application/xml;charset=UTF-8;Accept: */*;Referer: http://localhost:8270/gui/;Accept-Language: en-US,en"  -d '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>stop_simulator</string></value></param><param><value><array><data><value><string>COM4</string></value></data></array></value></param></params></methodCall>'  http://localhost:8270/
+rem Remove Simulator
+curl -H "Connection: keep-alive;Origin: http://localhost:8270;Content-Type: application/xml;charset=UTF-8;Accept: */*;Referer: http://localhost:8270/gui/;Accept-Language: en-US,en"  -d '<?xml version="1.0"?><methodCall><methodName>run_keyword</methodName><params><param><value><string>remove_device</string></value></param><param><value><array><data><value><string>COM4</string></value></data></array></value></param></params></methodCall>'  http://localhost:8270/
