@@ -1,0 +1,293 @@
+ifneq ($(TARGET_SIMULATOR),true)
+LOCAL_PATH:= $(call my-dir)
+include $(CLEAR_VARS)
+LOCAL_CFLAGS += -Wall
+LOCAL_LDLIBS := -L$(LOCAL_PATH)/lib -llog -g
+LOCAL_C_INCLUDES := bionic
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/include
+LOCAL_SRC_FILES:= send.c
+LOCAL_MODULE := send
+include $(BUILD_EXECUTABLE)
+include $(CLEAR_VARS)
+LOCAL_CFLAGS += -Wall
+LOCAL_LDLIBS := -L$(LOCAL_PATH)/lib -llog -g
+LOCAL_C_INCLUDES := bionic
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/include
+LOCAL_SRC_FILES:= recieve.c
+LOCAL_MODULE := recieve
+include $(BUILD_EXECUTABLE)
+endif  # TARGET_SIMULATOR != true
+
+
+#Send.call
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <errno.h>
+ 
+
+        
+#define BAUDRATE B4000000 
+#define MODEMDEVICE "/dev/ttymxc2"
+#define _POSIX_SOURCE 1 /* POSIX compliant source */
+#define FALSE 0
+#define TRUE 1
+ 
+FILE *file;
+int fileLen;
+char *tmpbuffer;
+void openport(void);
+void* sendport(void* arg) ;
+int fd=0;
+struct termios oldtp, newtp;
+ 
+int main()
+{
+ 
+        pthread_t m_pt1;
+        pthread_t m_pt2;
+	openport();
+	sleep(1);
+        if(pthread_create(&m_pt1,NULL,sendport,NULL))
+        {
+          fprintf(stderr, "Error creating thread\n");
+          return 1;  
+        }
+#if 0
+        if(pthread_create(&m_pt2,NULL,readport,NULL))
+        {
+          fprintf(stderr, "Error creating thread\n");
+          return 1;
+        }
+#endif
+        /* wait for the thread to finish */
+       if(pthread_join(m_pt1, NULL)) {
+          fprintf(stderr, "Error joining thread\n");
+          return 2;
+       }
+#if 0
+       if(pthread_join(m_pt2, NULL)) {
+          fprintf(stderr, "Error joining thread\n");
+          return 2;
+       }
+#endif
+
+       return 0;  
+}
+ 
+void* sendport(void* arg)
+{
+        printf("enter write\n");
+        int n;
+        file = fopen("sample.txt", "r");
+                //get file size
+
+        fseek(file, 0, SEEK_END);
+        fileLen = ftell(file);
+        fseek(file, 0, SEEK_SET);
+ 
+        tmpbuffer = (char *)malloc(fileLen);
+        //read file contents
+        printf("Start send\n");
+        fread(tmpbuffer, fileLen, 1, file);
+        fclose(file);
+        n = write(fd, tmpbuffer,fileLen + 1);
+ 
+        if (n < 0)
+         {
+           fputs("write() of bytes failed!\n", stderr);
+          }
+        else
+        {
+          printf("Image sent successfully %d\n",n-1);
+        }
+              
+         close(fd);
+         return NULL;
+ 
+}
+#if 0
+void*  readport(void* arg)
+{
+	unsigned char buff;
+        int n;
+        printf("Enter read");
+	file = fopen( "/sdcard/zname.txt", "w+" );
+     
+while (1) { 
+     printf("Inside readport loop");
+     n = read(fd, &buff, 1);
+//	fcntl(fd,F_SETFL,0);
+  if (n == -1){ 
+     switch(errno) {
+         case EAGAIN: /* sleep() */ 
+            continue;
+          
+         default: goto quit;
+         }
+    }
+  if (n ==0) break;
+   fputc(buff, file);
+   printf("%d %c\n", n,buff);
+  }
+quit:
+   fclose (file);
+
+ return NULL;
+}
+#endif
+void openport(void)
+{
+         fd = open(MODEMDEVICE, O_RDWR | O_NOCTTY |O_NDELAY );
+	 printf("fd is %d\n",fd);
+         if (fd <0)
+         {
+         perror(MODEMDEVICE);         }
+                                                                           
+         fcntl(fd,F_SETFL,0);
+        tcgetattr(fd,&oldtp); /* save current serial port settings */
+        // tcgetattr(fd,&newtp); /* save current serial port settings */
+         bzero(&newtp, sizeof(newtp));
+        // bzero(&oldtp, sizeof(oldtp));
+                                                                                
+         newtp.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+        // newtp.c_cflag = BAUDRATE;
+         
+
+                                                                                
+         newtp.c_iflag = IGNPAR | ICRNL;
+                                                                                
+         newtp.c_oflag = 0;
+                                                                                
+         newtp.c_lflag = ICANON;
+                                                                                
+         newtp.c_cc[VINTR]    = 0;     /* Ctrl-c */
+         newtp.c_cc[VQUIT]    = 0;     /* Ctrl-\ */
+         newtp.c_cc[VERASE]   = 0;     /* del */
+         newtp.c_cc[VKILL]    = 0;     /* @ */
+         //newtp.c_cc[VEOF]     = 4;     /* Ctrl-d */
+         newtp.c_cc[VEOF]     = 0;     /* Ctrl-d */
+         newtp.c_cc[VTIME]    = 0;     /* inter-character timer unused */
+         newtp.c_cc[VMIN]     = 1;     /* blocking read until 1 character arrives */
+         newtp.c_cc[VSWTC]    = 0;     /* '\0' */
+         newtp.c_cc[VSTART]   = 0;     /* Ctrl-q */
+         newtp.c_cc[VSTOP]    = 0;     /* Ctrl-s */
+         newtp.c_cc[VSUSP]    = 0;     /* Ctrl-z */
+         newtp.c_cc[VEOL]     = 0;     /* '\0' */
+         newtp.c_cc[VREPRINT] = 0;     /* Ctrl-r */
+         newtp.c_cc[VDISCARD] = 0;     /* Ctrl-u */
+         newtp.c_cc[VWERASE]  = 0;     /* Ctrl-w */
+         newtp.c_cc[VLNEXT]   = 0;     /* Ctrl-v */
+         newtp.c_cc[VEOL2]    = 0;     /* '\0' */
+                                                                                
+                                                                                
+        tcflush(fd, TCIOFLUSH);
+	tcsetattr(fd,TCSANOW,&newtp);
+
+}
+
+
+#Receive.c
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>        
+#include <stdlib.h> 
+#define BAUDRATE B115200 
+#define MODEMDEVICE "/dev/ttymxc2"/*UART NAME IN PROCESSOR*/
+#define _POSIX_SOURCE 1 /* POSIX compliant source */
+#define FALSE 0
+#define TRUE 1
+void openport(void);
+void sendport(void);
+void readport(void);
+int fd=0, n;
+static int cnt, size, s_cnt;
+unsigned char *var;
+struct termios oldtp, newtp;
+char sendcmd1[10]="\0";
+FILE *file;
+ 
+void  readport(void)
+{
+	unsigned char buff;
+	file = fopen( "/sdcard/zname.txt", "w+" );
+while (1) { 
+     printf("Inside readport loop");
+     n = read(fd, &buff, 1);
+//	fcntl(fd,F_SETFL,0);
+  if (n == -1){ 
+     switch(errno) {
+         case EAGAIN: /* sleep() */ 
+            continue;
+          
+         default: goto quit;
+         }
+    }
+  if (n ==0) break;
+   fputc(buff, file);
+   printf("%d %c\n", n,buff);
+  }
+quit:
+   fclose (file);
+}
+void openport(void)
+{
+         
+	 fd = open(MODEMDEVICE, O_RDWR | O_NOCTTY |O_NDELAY );
+	 printf("file descriptor is :%d\n",fd);
+         if (fd <0)
+         {
+         	perror(MODEMDEVICE);
+ 
+         }
+                                                                                
+         fcntl(fd,F_SETFL,0);
+         tcgetattr(fd,&oldtp); /* save current serial port settings */
+    //     tcgetattr(fd,&newtp); /* save current serial port settings */
+         bzero(&newtp, sizeof(newtp));
+  //       bzero(&oldtp, sizeof(oldtp));
+                                                                                
+         newtp.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+                                                                                
+         newtp.c_iflag = IGNPAR | ICRNL;
+                                                                                
+         newtp.c_oflag = 0;                                                                        
+         newtp.c_lflag = ICANON;                                                                    
+         newtp.c_cc[VINTR]    = 0;     /* Ctrl-c */
+         newtp.c_cc[VQUIT]    = 0;     /* Ctrl-\ */
+         newtp.c_cc[VERASE]   = 0;     /* del */
+         newtp.c_cc[VKILL]    = 0;     /* @ */
+        // newtp.c_cc[VEOF]     = 4;     /* Ctrl-d */
+         newtp.c_cc[VTIME]    = 0;     /* inter-character timer unused */
+         newtp.c_cc[VMIN]     = 0;     /* blocking read until 1 character arrives */
+         newtp.c_cc[VSWTC]    = 0;     /* '\0' */
+         newtp.c_cc[VSTART]   = 0;     /* Ctrl-q */
+         newtp.c_cc[VSTOP]    = 0;     /* Ctrl-s */
+         newtp.c_cc[VSUSP]    = 0;     /* Ctrl-z */
+         newtp.c_cc[VEOL]     = 0;     /* '\0' */
+         newtp.c_cc[VREPRINT] = 0;     /* Ctrl-r */
+         newtp.c_cc[VDISCARD] = 0;     /* Ctrl-u */
+         newtp.c_cc[VWERASE]  = 0;     /* Ctrl-w */
+         newtp.c_cc[VLNEXT]   = 0;     /* Ctrl-v */
+         newtp.c_cc[VEOL2]    = 0;     /* '\0' */
+   	                                                                                                                                             
+       tcflush(fd, TCIFLUSH);
+       tcsetattr(fd,TCSANOW,&newtp);
+
+}
+ 
+int  main()
+{
+ 
+	openport();
+	readport();
+        return 0;
+}
