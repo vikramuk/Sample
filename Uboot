@@ -1,0 +1,52 @@
+
+=>
+=> fastboot usb_imx
+=>
+=>
+=>
+=>
+=> printenv
+baudrate=115200
+boot_fdt=yes
+boot_size=24MiB
+bootcmd=setenv fastboot_boot 0; if test ${fastboot_boot} = 1; then env default -a; fastboot 1; fi; setenv ums_boot 0; if test ${ums_boot} = 1; then env default -a; ums 0 mmc 1; reset; fi; mmc dev 1; mmc read ${loadaddr} 0x00000022 0xC000; bootm ${loadaddr} ${loadaddr} ${loadaddr};
+bootdelay=1
+bootscript=echo Running bootscript from ${dev}:${devnum}:${partnum}; source
+cache_size=512MiB
+console=ttymxc3
+doboot=echo Booting from ${dev}:${devnum}:${partnum} ...; run setargs; if test ${boot_fdt} = yes || test ${boot_fdt} = try; then if run loadfdt; then bootm ${loadaddr} - ${fdt_addr}; else if test ${boot_fdt} = try; then bootm; else echo WARN: Cannot load the DT; fi; fi; else bootm; fi;
+emmcdev=1
+ethprime=FEC
+fdt_addr=0x18000000
+fdt_file=/imx6q-dms-ba16.dtb
+fdt_high=0x14f00000
+image=/uImage
+initrd_high=0x15000000
+ip_dyn=yes
+loadaddr=0x12000000
+loadbootscript=${loadcmd} ${dev} ${devnum}:${partnum} ${loadaddr} ${script};
+loadcmd=fatload
+loadfdt=${loadcmd} ${dev} ${devnum}:${partnum} ${fdt_addr} ${fdt_file}
+loadimage=${loadcmd} ${dev} ${devnum}:${partnum} ${loadaddr} ${image}
+misc_size=8MiB
+netargs=setenv bootargs console=${console},${baudrate} root=/dev/nfs ip=dhcp nfsroot=${serverip}:${nfsroot},v3,tcp
+netboot=echo Booting from net ...; run netargs; if test ${ip_dyn} = yes; then setenv get_cmd dhcp; else setenv get_cmd tftp; fi; ${get_cmd} ${image}; if test ${boot_fdt} = yes || test ${boot_fdt} = try; then if ${get_cmd} ${fdt_addr} ${fdt_file}; then bootm ${loadaddr} - ${fdt_addr}; else if test ${boot_fdt} = try; then bootm; else echo WARN: Cannot load the DT; fi; fi; else bootm; fi;
+partitions=uuid_disk=${uuid_gpt_disk};name=boot,size=${boot_size},uuid=${boot_uuid};name=recovery,size=${recovery_size},uuid=${recovery_uuid};name=userdata,size=${userdata_size},uuid=${userdata_uuid};name=system,size=${system_size},uuid=${system_uuid};name=cache,size=${cache_size},uuid=${cache_uuid};name=vendor,size=${vendor_size},uuid=${vendor_uuid};name=misc,size=${misc_size},uuid=${misc_uuid};
+partnum=1
+recovery_size=16MiB
+rfspart=2
+script=boot.scr
+sddev=0
+setargs=setenv bootargs console=${console},${baudrate} root=/dev/${rootdev} rw rootwait panic=10
+splashfile=splash.bmp
+splashimage=0x10800000
+splashsource=mmc_system_fs
+system_size=800MiB
+tryboot=if run loadbootscript; then run bootscript; else if run loadimage; then run doboot; fi; fi;
+uboot=u-boot.imx
+update_sd_firmware=if test ${ip_dyn} = yes; then setenv get_cmd dhcp; else setenv get_cmd tftp; fi; if mmc dev ${mmcdev}; then if ${get_cmd} ${update_sd_firmware_filename}; then setexpr fw_sz ${filesize} / 0x200; setexpr fw_sz ${fw_sz} + 1; mmc write ${loadaddr} 0x2 ${fw_sz}; fi; fi
+update_sf_uboot=if tftp $loadaddr $uboot; then sf probe; sf erase 0 0xC0000; sf write $loadaddr 0x400 $filesize; echo 'U-Boot upgraded. Please reset'; fi
+userdata_size=5040MiB
+vendor_size=8MiB
+
+Environment size: 2981/8188 bytes
