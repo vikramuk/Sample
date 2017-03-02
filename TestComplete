@@ -1,0 +1,97 @@
+# Script overview: To perform veriication of text and change NIBP settings
+# Precondition: Both service app and monitoring app are in running state
+
+# This is the main function
+def Main():
+  VerifyControls()
+  SelectSettingsMenu()
+  NIBPparameters()
+  CloseSettings()
+  
+# This method gets the US1, US2, US3, NIBP, MHR, MSpO2 and TOCO Texts from UI and passes the values to VerifyText() method
+def VerifyControls():  
+  ParameterBlocks = Aliases.Device.Process_mic_monitoring.RootLayout.Layout_normal_vitalblocks_container
+
+  US1 = ParameterBlocks.Layout_us1vitalblock.Layout_NO_ID.Layout_rl_leftcontainer.TextView_tv_label.getText()
+  US2 = ParameterBlocks.Layout_us2vitalblock.Layout_NO_ID.Layout_rl_leftcontainer.TextView_tv_label.getText()
+  US3 = ParameterBlocks.Layout_us3vitalblock.Layout_NO_ID.Layout_rl_leftcontainer.TextView_tv_label.getText()
+  MHR = ParameterBlocks.Layout_mhrvitalblock.Layout_NO_ID.Layout_rl_leftcontainer.TextView_tv_label.getText()
+  NIBP = ParameterBlocks.Layout_nibp_normal_vitalblock.Layout_NO_ID.Layout_rl_nibp_leftcontainer.TextView_tv_label.getText()
+  MSPO2 = ParameterBlocks.Layout_mspo2_normal_vitalblock.Layout_mspo2_vital_block_normal.Layout_rl_mspo2_leftcontainer.TextView_tv_label.getText()
+  TOCO = ParameterBlocks.Layout_toco_normal_vitalblock.Layout_NO_ID.Layout_NO_ID.Layout_NO_ID.TextView_tv_label.getText()
+  
+  ParameterText = [US1, US2, US3, MHR, MSPO2, TOCO]
+  DefaultText =   ["US1", "US2", "US3", "MHR/P", "MSpO2", "TOCO"]
+  Items = len(ParameterText)
+  for Text in range( 0, Items ):
+    VerifyText( ParameterText[Text], DefaultText[Text])
+    
+ 
+# This method select the Settings from Menu and verify Settings dialog is displayed     
+def SelectSettingsMenu():
+   # Click Menu button
+   Aliases.Layout_navigation_fragment.Button_navigation_menu_button.Touch()
+   # Click Settings from list
+   Aliases.Device.Process_mic_monitoring.Layout_NO_ID.ListView_lv_menu_list.Layout("NO_ID", 2).Touch()
+   Caption = Aliases.Layout_settings_screen_container.Layout_NO_ID.Layout_NO_ID.Layout_settingstext.TextView_settings.getText()
+   if Caption == "Settings":
+    Log.Message("Settings dialog is displayed")
+
+# This method select the Parameters from Settings dialog and Select NIBP Tab  
+def NIBPparameters():
+   ParameterBlock = Aliases.Layout_settings_screen_container.Layout_NO_ID.Layout_NO_ID.Layout_app_settings_container
+   # Click parameter from list
+   ParameterBlock.ListView_settings_items_list.Layout_NO_ID.Touch()
+   Selected = ParameterBlock.Layout_NO_ID.Layout_NO_ID.TabHost_tabhost.HorizontalScrollView_NO_ID.TabWidget_tabs.Layout_NO_ID.isSelected()
+   Log.Message("FHR is selected by default")
+   # Click NIBP Tab
+   ParameterBlock.Layout_NO_ID.Layout_NO_ID.TabHost_tabhost.TouchTab(3)
+   
+   # Verify NIBP Tab is displayed correctly
+   VerifyNIBPSettings()
+   # Change button selection in NIBP Tab
+   ChangeNIBPSettings()
+
+# This method gets the NIBP Display, Mode, Unit and NIBP volume Texts from UI and passes the values to VerifyText() method 
+def VerifyNIBPSettings():
+  NIBPBlock = Aliases.Layout_settings_screen_container.Layout_NO_ID.Layout_NO_ID.Layout_app_settings_container.Layout_NO_ID.Layout_NO_ID.TabHost_tabhost.Layout_nibp_settings.Layout_NO_ID
+  
+  NIBPDisplayText = NIBPBlock.Layout_NO_ID.TextView_lt_nibp_display.getText()
+  Mode = NIBPBlock.Layout_NO_ID2.Layout_NO_ID.TextView_lt_nibp_mode.getText()
+  NIBPVolume = NIBPBlock.Layout_NO_ID3.Layout_seekbar_nibp_volume.Layout_NO_ID.Layout_NO_ID.TextView_seekbarLabel.getText()
+  Unit = NIBPBlock.Layout_NO_ID2.Layout_NO_ID2.TextView_lt_nibp_unit.getText()
+  
+  ParameterText = [NIBPDisplayText, Mode, NIBPVolume, Unit]
+  DefaultText =   ["NIBP Display", "Mode", "NIBP Done Volume", "Unit"]
+  Items = len(ParameterText)
+  for Text in range( 0, Items ):
+    VerifyText( ParameterText[Text], DefaultText[Text])
+
+# Change NIBP display to OFF and Mode to Auto  
+def ChangeNIBPSettings():
+  NIBPBlock = Aliases.Layout_settings_screen_container.Layout_NO_ID.Layout_NO_ID.Layout_app_settings_container.Layout_NO_ID.Layout_NO_ID.TabHost_tabhost.Layout_nibp_settings.Layout_NO_ID
+  
+  # Select "OFF" for NIBP display
+  NIBPBlock.Layout_NO_ID.RadioGroup_rg_nibp_display.RadioButton_OFF.Touch()
+  if True == NIBPBlock.Layout_NO_ID.RadioGroup_rg_nibp_display.RadioButton_OFF.wChecked:
+    Log.Message( "NIBP Display is in OFF State" )
+  else:
+    Log.Message( "NIBP Display is in ON State" )  
+    
+  # Select "Manual" for Mode  
+  NIBPBlock.Layout_NO_ID2.Layout_NO_ID.RadioGroup_rg_nibp_mode.RadioButton_Manual.Touch()  
+  if True == NIBPBlock.Layout_NO_ID2.Layout_NO_ID.RadioGroup_rg_nibp_mode.RadioButton_Manual.wChecked:
+    Log.Message( "Manual Mode is in ON State" )
+  else:
+    Log.Message( "Auto Mode is in ON State" )  
+    
+# This method closes the Settings dialog  
+def CloseSettings():
+  Aliases.Layout_settings_screen_container.Layout_NO_ID.Layout_NO_ID.Layout_settingstext.Button_btn_settings_close.TouchButton()
+
+# This method verifies the texts are displayed correctly 
+def VerifyText( UIText, OrgText):
+  if UIText == OrgText:
+     Log.Message("Text verification  success") 
+  else:
+    Log.Error("Text verification failed")
