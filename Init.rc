@@ -1,0 +1,38 @@
+#Create directory for PDM
+mkdir /data/opt 0770 system system
+mkdir /data/opt/pdm 0770 system system
+mkdir /data/opt/pdm/appdata 0770 system system
+mkdir /data/opt/pdm/apps 0770 system system
+mkdir /data/opt/pdm/apps/comm_waveform 0770 system system
+mkdir /data/opt/pdm/apps/images/ 0770 system system
+cp /data/WaveSetEcgRespIPsSpO2sTempCOCO2Descriptor.xml /data/opt/pdm/apps/comm_waveform/
+mkdir /data/opt/pdm/secure 0770 system system
+ 
+service emerald_acq /system/bin/emerald_acq
+class main
+oneshot
+ 
+ 
+1.       Add the following code in “init.rc “ file and checkin the code...
+ 
+#Create directory for PDM
+mkdir /data/opt 0770 system system
+mkdir /data/opt/pdm 0770 system system
+mkdir /data/opt/pdm/appdata 0770 system system
+mkdir /data/opt/pdm/apps 0770 system system
+mkdir /data/opt/pdm/apps/comm_waveform 0770 system system
+cp /data/WaveSetEcgRespIPsSpO2sTempCOCO2Descriptor.xml /data/opt/pdm/apps/comm_waveform/
+mkdir /data/opt/pdm/secure 0770 system system
+ 
+service emerald_acq /system/bin/emerald_acq
+class main
+oneshot
+  "BoardConfig.mk" file in “/home/ubuntu/AOSP2/kitkat-aosp-build/Quest_Android/device/fsl/sabresd_6dq” and checkin the code..
+ 
+#Adding PDM files
+        PRODUCT_COPY_FILES +=   \
+               device/fsl/sabresd_6dq/pdm/bin/emerald_acq:/system/bin/emerald_acq \
+        device/fsl/sabresd_6dq/pdm/libs/libcrystax.so:/system/lib/libcrystax.so \
+                      device/fsl/sabresd_6dq/pdm/libs/libxerces-c-3.1.so:/system/lib/libxerces-c-3.1.so
+ 
+ 
