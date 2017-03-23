@@ -1,0 +1,15 @@
+ sudo ./fsl-sdcard-partition.sh -f imx6q /dev/sdc
+ cd /home/SM/Documents/final\ images/kernel_ramdisk/
+ sudo dd if=u-boot.imx of=/dev/sdc bs=1k seek=1
+ sync
+ sudo mkfs.vfat -n BOOT /dev/sdc1
+ sync
+ cp -r boot.scr mx6q-ba16.dtb ramdisk.img uImage /media/SM/BOOT/
+ sync
+ cd ..
+ sudo cp -r opt/ /media/SM/data/
+ sudo chmod -R 755 /media/SM/data/opt/
+ sync
+ cd system_images/
+ sudo dd if=system_raw.img of=/dev/sdc5
+ sync
