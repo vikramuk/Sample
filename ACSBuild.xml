@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- WARNING: Eclipse auto-generated file.
+              Any modifications will be overwritten.
+              To include a user specific buildfile here, simply create one in the same
+              directory with the processing instruction <?eclipse.ant.import?>
+              as the first entry and export the buildfile again. --><project basedir="." default="build" name="LotusAutomation">
+    <property environment="env"/>
+    <property name="ECLIPSE_HOME" value="../../../eclipse/java-neon/eclipse/"/>
+    <property name="junit.output.dir" value="junit"/>
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="1.8"/>
+    <property name="source" value="1.8"/>
+    <path id="Maven Dependencies.libraryclasspath"/>
+    <path id="LotusAutomation.classpath">
+        <pathelement location="target/classes"/>
+        <pathelement location="Lib/cucumber-core-1.2.5.jar"/>
+        <pathelement location="Lib/cucumber-html-0.2.3.jar"/>
+        <pathelement location="Lib/cucumber-java-1.2.5.jar"/>
+        <pathelement location="Lib/cucumber-java8-1.2.5.jar"/>
+        <pathelement location="Lib/cucumber-junit-1.2.5.jar"/>
+        <pathelement location="Lib/cucumber-jvm-deps-1.0.5.jar"/>
+        <pathelement location="Lib/gherkin-2.12.2.jar"/>
+        <pathelement location="Lib/gherkin-4.0.0.jar"/>
+        <pathelement location="Lib/gherkin-jvm-deps-1.0.4.jar"/>
+        <pathelement location="Lib/gson-2.3.1.jar"/>
+        <pathelement location="Lib/guava-19.0.jar"/>
+        <pathelement location="Lib/hamcrest-all-1.3.jar"/>
+        <pathelement location="Lib/jacob-1.14.3.jar"/>
+        <pathelement location="Lib/junit-4.12.jar"/>
+        <pathelement location="Lib/TestComplete.jar"/>
+        <pathelement location="Lib/testng.jar"/>
+        <pathelement location="Lib/RXTXcomm.jar"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <path id="run.ACSUtility.classpath">
+        <path refid="LotusAutomation.classpath"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <path id="run.Spo2Steps (1).classpath">
+        <path refid="LotusAutomation.classpath"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <path id="run.Spo2Steps.classpath">
+        <path refid="LotusAutomation.classpath"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <path id="run.TestExecutor.classpath">
+        <path refid="LotusAutomation.classpath"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <path id="run.Test.classpath">
+        <path refid="LotusAutomation.classpath"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <path id="run.LotusAutomation (2).classpath">
+        <path refid="LotusAutomation.classpath"/>
+        <path refid="Maven Dependencies.libraryclasspath"/>
+    </path>
+    <target name="init">
+        <mkdir dir="target/classes"/>
+        <copy includeemptydirs="false" todir="target/classes">
+            <fileset dir="src">
+                <exclude name="**/*.launch"/>
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+    </target>
+    <target name="clean">
+        <delete dir="target/classes"/>
+    </target>
+    <target depends="clean" name="cleanall"/>
+    <target depends="build-subprojects,build-project" name="build"/>
+    <target name="build-subprojects"/>
+    <target depends="init" name="build-project">
+        <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac debug="true" debuglevel="${debuglevel}" destdir="target/classes" includeantruntime="false" source="${source}" target="${target}">
+            <src path="src"/>
+            <classpath refid="LotusAutomation.classpath"/>
+        </javac>
+    </target>
+    <target description="Build all projects which reference this project. Useful to propagate changes." name="build-refprojects"/>
+    <target description="copy Eclipse compiler jars to ant lib directory" name="init-eclipse-compiler">
+        <copy todir="${ant.library.dir}">
+            <fileset dir="${ECLIPSE_HOME}/plugins" includes="org.eclipse.jdt.core_*.jar"/>
+        </copy>
+        <unzip dest="${ant.library.dir}">
+            <patternset includes="jdtCompilerAdapter.jar"/>
+            <fileset dir="${ECLIPSE_HOME}/plugins" includes="org.eclipse.jdt.core_*.jar"/>
+        </unzip>
+    </target>
+    <target description="compile project with Eclipse compiler" name="build-eclipse-compiler">
+        <property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
+        <antcall target="build"/>
+    </target>
+    <target name="ACSUtility">
+        <java classname="com.ge.lotus.automation.acs.ACSUtility" failonerror="true" fork="yes">
+            <classpath refid="run.ACSUtility.classpath"/>
+        </java>
+    </target>
+    <target name="Spo2Steps (1)">
+        <java classname="com.ge.lotus.automation.stepdefinition.Spo2Steps" failonerror="true" fork="yes">
+            <classpath refid="run.Spo2Steps (1).classpath"/>
+        </java>
+    </target>
+    <target name="Spo2Steps">
+        <mkdir dir="${junit.output.dir}"/>
+        <junit fork="yes" printsummary="withOutAndErr">
+            <formatter type="xml"/>
+            <test name="com.ge.lotus.automation.stepdefinition.Spo2Steps" todir="${junit.output.dir}"/>
+            <jvmarg line="-ea"/>
+            <classpath refid="run.Spo2Steps.classpath"/>
+        </junit>
+    </target>
+    <target name="TestExecutor">
+        <mkdir dir="${junit.output.dir}"/>
+        <junit fork="yes" printsummary="withOutAndErr">
+            <formatter type="xml"/>
+            <test name="com.ge.lotus.automation.cucumber.TestExecutor" todir="${junit.output.dir}"/>
+            <jvmarg line="-ea"/>
+            <classpath refid="run.TestExecutor.classpath"/>
+        </junit>
+    </target>
+    <target name="Test">
+        <java classname="com.ge.lotus.automation.cucumber.Test" failonerror="true" fork="yes">
+            <classpath refid="run.Test.classpath"/>
+        </java>
+    </target>
+    <target name="LotusAutomation (2)">
+        <mkdir dir="${junit.output.dir}"/>
+        <junit fork="yes" printsummary="withOutAndErr">
+            <formatter type="xml"/>
+            <test name="com.ge.lotus.automation.cucumber.TestExecutor" todir="${junit.output.dir}"/>
+            <test name="com.ge.lotus.automation.stepdefinition.NiBPSteps" todir="${junit.output.dir}"/>
+            <test name="com.ge.lotus.automation.stepdefinition.Spo2Steps" todir="${junit.output.dir}"/>
+            <jvmarg line="-ea"/>
+            <classpath refid="run.LotusAutomation (2).classpath"/>
+        </junit>
+    </target>
+    <target name="junitreport">
+        <junitreport todir="${junit.output.dir}">
+            <fileset dir="${junit.output.dir}">
+                <include name="TEST-*.xml"/>
+            </fileset>
+            <report format="frames" todir="${junit.output.dir}"/>
+        </junitreport>
+    </target>
+</project>
